@@ -8,7 +8,7 @@ class InSortTest extends FlatSpec with Matchers {
       LongRow(9, Array("e", "bb", "c", "d")),
       LongRow(4, Array("d", "bb", "c", "d"))
     )
-    val out = InSort.SortLongRow(unsorted)
+    val out = InSort.sortLongRow(unsorted)
     out(0).v === 1
     out(1).v === 2
     out(2).content(0) === "d"
@@ -23,7 +23,7 @@ class InSortTest extends FlatSpec with Matchers {
       StringRow("a", Array("e", "bb", "c", "d")),
       StringRow("x", Array("d", "bb", "c", "d"))
     )
-    val out = InSort.SortStringRow(unsorted)
+    val out = InSort.sortStringRow(unsorted)
     out(0).v === "a"
     out(1).v === "b"
     out(2).content(0) === "c"

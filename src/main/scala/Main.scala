@@ -7,8 +7,9 @@ import com.univocity.parsers.tsv.{TsvWriter, TsvWriterSettings}
 case class ExortSetting(file: File,
                         rowSplit: Int = 20000,
                         sep: Char = ';',
-                        keyType: sortKeyType = numericKeyType,
-                        keyNr: Int = 0,
+                        keyType: List[sortKeyType] = stringKeyType :: Nil,
+                        keyNr: List[Int] = 0 :: Nil,
+                        complexSort: Boolean = false,
                         unixPrepare: Boolean = false,
                         skipHeader: Boolean = false)
 
@@ -29,7 +30,7 @@ object Main {
     }
 
     def unixReadyLine(line: Array[String]) = {
-      val keyElem = line(settings.keyNr)
+      val keyElem = line(settings.keyNr(0))
       val newLine = Array(keyElem) ++ line
       writer.writeRow(newLine: _*)
     }
@@ -64,7 +65,7 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
     }
     val defaultOption = ExortSetting(new File(fileLoc))
 
-    @scala.annotation.tailrec
+    // @scala.annotation.tailrec  // WORKS in 2.12.9 but doesn't in 2.13.0/1 (and intellij marks it as tail-recursive)
     def readArguments(arguments: List[String], options: ExortSetting): Either[String, ExortSetting] = {
       arguments match {
         case "--rows" :: rws :: tail => {
@@ -76,42 +77,63 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
           if (rows < 0) {
             Left("Row value must be positive")
           } else {
-            readArguments(tail, options.copy(rowSplit = rows))
+            return readArguments(tail, options.copy(rowSplit = rows))
           }
         }
         case "--sep" :: sepr :: tail => {
           readArguments(tail, options.copy(sep = sepr(0)))
         }
         case "--key" :: kn :: tail => {
-          val keyNumber = try {
-            kn.toInt
+          val keyNumbers = try {
+            kn.split(",").map(_.toInt)
           } catch {
             case _: Throwable => return Left("Could not read key number")
           }
-          if (keyNumber < 0) {
+          val invalidKeys = keyNumbers.filter(_ < 0)
+          if (invalidKeys.length < 0) {
             Left("Key value must be positive")
           } else {
-            readArguments(tail, options.copy(keyNr = keyNumber))
+            return readArguments(tail, options.copy(keyNr = keyNumbers.toList))
           }
         }
         case "--keyVal" :: kv :: tail => {
-          val ktype = kv match {
-            case "n" => numericKeyType
+          val ktypes: List[sortKeyType] = kv.split(",").toList.map((x: String) => x match {
+            case "d" => decimalKeyType
+            case "i" => integerKeyType
             case "s" => stringKeyType
-          }
-          readArguments(tail, options.copy(keyType = ktype))
+            case _ => return Left("Could not read key type")
+          })
+          return readArguments(tail, options.copy(keyType = ktypes))
         }
         case "--unixsort" :: tail => {
-          readArguments(tail, options.copy(unixPrepare = true))
+          return readArguments(tail, options.copy(unixPrepare = true))
+        }
+        case "--complex" :: tail => {
+          return readArguments(tail, options.copy(complexSort = true))
         }
         case Nil => Right(options)
         case _ => Left(s"Unknown options ${arguments}")
       }
     }
 
+    /**
+     * Make sure that the amount of keytypes equals the amount of keylocations
+     */
+    def fixSettings(settings: ExortSetting): ExortSetting = {
+      if (settings.keyNr.length < settings.keyType.length) {
+        settings.copy(keyType = settings.keyType.slice(0, settings.keyNr.length))
+      } else if (settings.keyType.length > settings.keyType.length) {
+        val diff = settings.keyType.length - settings.keyType.length
+        settings.copy(keyType = settings.keyType ++ List.fill(diff)(stringKeyType))
+      } else {
+        settings
+      }
+    }
+
     if (args.length > 1) {
       val otherArguments = args.slice(0, args.length - 1)
-      return readArguments(otherArguments.toList, defaultOption)
+      val options = readArguments(otherArguments.toList, defaultOption)
+      return options.map(fixSettings(_))
     }
     Right(defaultOption)
   }

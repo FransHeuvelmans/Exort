@@ -10,7 +10,7 @@ import scala.util.Random
 object Tools {
   object sortKeyType extends Enumeration {
     type sortKeyType = Value
-    val numericKeyType, stringKeyType = Value
+    val decimalKeyType, integerKeyType, stringKeyType = Value
   }
 
   def csvParser(sep: Char, hasHeader: Boolean): CsvParser = {
@@ -37,11 +37,31 @@ object Tools {
 
   def tempOutputFile(location: Path, nr: Int = 0): File = new File(location.toFile, s"p${nr}.tsv")
 
-  def writeToFile(data: List[SortableRow], fileLoc: File, settings: ExortSetting) = {
+  def writeToFile(data: Iterable[SortableRow], fileLoc: File, settings: ExortSetting) = {
     val writer = new TsvWriter(fileLoc, new TsvWriterSettings)
-    val outArray: List[Array[String]] = data.map((x: SortableRow) => x.getContent())
+    val outArray: Iterable[Array[String]] = data.map((x: SortableRow) => x.getContent)
     outArray.foreach(writer.writeRow(_))
     writer.close()
+  }
+
+  /**
+   * Alphabetical distance (NO edit distance)
+   */
+  @scala.annotation.tailrec
+  def StringDistance(a: String, b: String): Double = {
+    if ((a == Nil) && (b == Nil)) {
+      return 0.0
+    } else if (a == Nil) {
+      return b.head.toDouble
+    } else if (b == Nil) {
+      return -a.head.toDouble
+    }
+    val diff = b.head - a.head
+    if (diff == 0) {
+      StringDistance(a.tail, b.tail)
+    } else {
+      diff.toDouble
+    }
   }
 
   def cleanDirectory(location: Path): Unit = {
