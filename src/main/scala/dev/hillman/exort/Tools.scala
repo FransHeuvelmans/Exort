@@ -1,11 +1,13 @@
+package dev.hillman.exort
+
 import java.io.File
 import java.nio.file.{Files, Path}
+import scala.jdk.StreamConverters._
 
-import com.univocity.parsers.csv.{CsvParser, CsvParserSettings, CsvWriter, CsvWriterSettings}
+import com.univocity.parsers.csv.{CsvParser, CsvParserSettings}
 import com.univocity.parsers.tsv.{TsvParser, TsvParserSettings, TsvWriter, TsvWriterSettings}
 
 import scala.util.Random
-
 
 object Tools {
   object sortKeyType extends Enumeration {
@@ -66,6 +68,10 @@ object Tools {
 
   def cleanDirectory(location: Path): Unit = {
     // Clean the directory and all files within here
+    println(s"Deleting files at $location")
+    val filePathList = Files.list(location).toScala(Seq)
+    println(filePathList)
+    filePathList.map((x: Path) => x.toFile.delete())
   }
 
 }

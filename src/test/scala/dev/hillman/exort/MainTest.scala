@@ -1,3 +1,5 @@
+package dev.hillman.exort
+
 import org.scalatest._
 
 class MainTest extends FlatSpec with Matchers {
@@ -19,6 +21,11 @@ class MainTest extends FlatSpec with Matchers {
     val options2 = Main.parseArgs(invocation2).toOption.get
     options2.file.getName === testFileLoc
     options2.sep === "|"
+
+    val invocation3 = Array("--rows", "42M", testFileLoc)
+    val options3 = Main.parseArgs(invocation1).toOption.get
+    options1.file.getName == testFileLoc
+    options1.rowSplit === 42000000
   }
 
   "multiple extra options " should "change all the options" in {

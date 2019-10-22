@@ -1,7 +1,8 @@
-import PickSortable.PickSortable
+package dev.hillman.exort
+
+import dev.hillman.exort.PickSortable.PickSortable
+
 import scala.reflect._
-import scala.reflect.runtime.universe._
-import scala.reflect.ClassTag
 import scala.util.Sorting
 
 object PickSortable extends Enumeration {

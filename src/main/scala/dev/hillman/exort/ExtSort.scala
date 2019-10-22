@@ -1,7 +1,10 @@
-import java.io.{BufferedReader, File, FileReader, PrintWriter}
-import java.nio.file.{Files, Path, Paths}
+package dev.hillman.exort
 
-import com.univocity.parsers.tsv.{TsvParser, TsvWriter, TsvWriterSettings}
+import java.io.{BufferedReader, File, FileReader, PrintWriter}
+import java.nio.file.{Files, Path, StandardCopyOption}
+
+import com.univocity.parsers.tsv.{TsvWriter, TsvWriterSettings}
+import dev.hillman.exort
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -88,7 +91,7 @@ object ExtSort {
     parser beginParsing settings.file
 
     def sortAsLongFile(keyCol: Int): List[TempSortedFile] = {
-      var iterRow = 0
+      var iterRow = 1
       var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
@@ -100,7 +103,7 @@ object ExtSort {
           val currentFixedSet = InSort.sortLongRow(currentDataSet)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-          sortedFiles = LongSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+          sortedFiles = exort.LongSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
           currentDataSet = Nil
           iterFile += 1
           iterRow = 0
@@ -113,14 +116,14 @@ object ExtSort {
         val currentFixedSet = InSort.sortLongRow(currentDataSet)
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-        sortedFiles = LongSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+        sortedFiles = exort.LongSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
       }
       parser.stopParsing()
       sortedFiles
     }
 
     def sortAsStringFile(keyCol: Int): List[TempSortedFile] = {
-      var iterRow = 0
+      var iterRow = 1
       var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
@@ -132,7 +135,7 @@ object ExtSort {
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
-          sortedFiles = StringSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+          sortedFiles = exort.StringSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
           currentDataSet = Nil
           iterFile += 1
           iterRow = 0
@@ -145,14 +148,14 @@ object ExtSort {
         val currentFixedSet = InSort.sortStringRow(currentDataSet)
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-        sortedFiles = StringSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+        sortedFiles = exort.StringSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
       }
       parser.stopParsing()
       sortedFiles
     }
 
     def sortAsDoubleFile(keyCol: Int): List[TempSortedFile] = {
-      var iterRow = 0
+      var iterRow = 1
       var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
@@ -164,7 +167,7 @@ object ExtSort {
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
-          sortedFiles = DoubleSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+          sortedFiles = exort.DoubleSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
           currentDataSet = Nil
           iterFile += 1
           iterRow = 0
@@ -177,7 +180,7 @@ object ExtSort {
         val currentFixedSet = InSort.sortDoubleRow(currentDataSet)
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-        sortedFiles = DoubleSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+        sortedFiles = exort.DoubleSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
       }
       parser.stopParsing()
       sortedFiles
@@ -409,6 +412,7 @@ object ExtSort {
     println(s"Simply merged parts ${mergeList}")
     val processedFile = externalMergeSort(mergeList, tempDir, setting)
     println("Sorting done")
-    Files.move(processedFile.toPath(), (new File("output.csv")).toPath)
+    Files.move(processedFile.toPath(), (new File("output.csv")).toPath, StandardCopyOption.REPLACE_EXISTING)
+    Tools.cleanDirectory(tempDir)
   }
 }

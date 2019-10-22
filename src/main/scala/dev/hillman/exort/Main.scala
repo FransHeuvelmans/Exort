@@ -1,8 +1,9 @@
+package dev.hillman.exort
+
 import java.io.File
 
-import Tools.sortKeyType._
-import com.univocity.parsers.csv.CsvWriter
 import com.univocity.parsers.tsv.{TsvWriter, TsvWriterSettings}
+import dev.hillman.exort.Tools.sortKeyType.{decimalKeyType, integerKeyType, sortKeyType, stringKeyType}
 
 case class ExortSetting(file: File,
                         rowSplit: Int = 20000,
@@ -69,10 +70,26 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
     def readArguments(arguments: List[String], options: ExortSetting): Either[String, ExortSetting] = {
       arguments match {
         case "--rows" :: rws :: tail => {
-          val rows = try {
-            rws.toInt
-          } catch {
-            case _: Throwable => return Left("Could not read row number")  // Dirty solution for now
+          val rows = {
+            if (rws.toLowerCase.contains("k")) {
+              try {
+                rws.toLowerCase.replace("k", "").toInt * 1000
+              } catch {
+                case _: Throwable => return Left("Could not read k row number")  // Dirty solution for now
+              }
+            } else if (rws.toLowerCase.contains("m")) {
+              try {
+                rws.toLowerCase.replace("m", "").toInt * 1000000
+              } catch {
+                case _: Throwable => return Left("Could not read k row number")  // Dirty solution for now
+              }
+            } else {
+              try {
+                rws.toInt
+              } catch {
+                case _: Throwable => return Left("Could not read row number")  // Dirty solution for now
+              }
+            }
           }
           if (rows < 0) {
             Left("Row value must be positive")
