@@ -6,6 +6,7 @@ import scala.jdk.StreamConverters._
 
 import com.univocity.parsers.csv.{CsvParser, CsvParserSettings}
 import com.univocity.parsers.tsv.{TsvParser, TsvParserSettings, TsvWriter, TsvWriterSettings}
+import Tools.sortKeyType
 
 import scala.util.Random
 
@@ -74,4 +75,32 @@ object Tools {
     filePathList.map((x: Path) => x.toFile.delete())
   }
 
+  def convertToVaryRow(inSource: Array[String], setting: ExortSetting, addSource: Boolean = true): VaryRow = {
+
+    @scala.annotation.tailrec
+    def createRow(tempSetting: ExortSetting, outRow: VaryRow): VaryRow = {
+      tempSetting.keyType match {
+        case sortKeyType.integerKeyType :: tail => {
+          val newRow = outRow.copy(v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toInt)
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), newRow)
+        }
+        case sortKeyType.decimalKeyType :: tail => {
+          val newRow = outRow.copy(v2 = outRow.v2 :+ inSource(tempSetting.keyNr.head).toDouble)
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), newRow)
+        }
+        case sortKeyType.stringKeyType :: tail => {
+          val newRow = outRow.copy(v1 = outRow.v1 :+ inSource(tempSetting.keyNr.head))
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), newRow)
+        }
+        case Nil => outRow
+        case _ => createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), outRow)
+      }
+    }
+    val emptyRow = if (addSource) {
+      VaryRow(Nil, Nil, Nil, setting.keyType, inSource)
+    } else {
+      VaryRow(Nil, Nil, Nil, setting.keyType, Array[String]())
+    }
+    createRow(setting, emptyRow)
+  }
 }

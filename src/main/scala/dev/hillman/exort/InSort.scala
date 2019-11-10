@@ -1,14 +1,8 @@
 package dev.hillman.exort
 
-import dev.hillman.exort.PickSortable.PickSortable
 
 import scala.reflect._
 import scala.util.Sorting
-
-object PickSortable extends Enumeration {
-  type PickSortable = Value
-  val pickStringSortable, pickDecimalSortable, pickIntSortable = Value
-}
 
 sealed trait SortableRow {
   def getContent: Array[String]
@@ -25,7 +19,7 @@ case class StringRow(v: String, content: Array[String]) extends SortableRow {
 case class VaryRow(v1: List[String],
                    v2: List[BigDecimal],
                    v3: List[BigInt],
-                   vs:List[PickSortable],
+                   vs:List[Tools.sortKeyType.sortKeyType],
                    content: Array[String]) extends SortableRow {
   def getContent(): Array[String] = this.content
 }
@@ -42,7 +36,7 @@ object StringRowOrdering extends Ordering[StringRow] {
 object VaryRowOrdering extends Ordering[VaryRow] {
   @scala.annotation.tailrec
   override def compare(x: VaryRow, y: VaryRow): Int = x.vs.head match {
-    case PickSortable.pickStringSortable => {
+    case Tools.sortKeyType.stringKeyType => {
       val cmp = Ordering.String.compare(x.v1.head, y.v1.head)
       if (cmp != 0) {
         return cmp
@@ -51,7 +45,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       val newThat = VaryRow(y.v1.tail, y.v2, y.v3, y.vs.tail, y.content)
       VaryRowOrdering.compare(newThis, newThat)
     }
-    case PickSortable.pickDecimalSortable => {
+    case Tools.sortKeyType.decimalKeyType => {
       val cmp = Ordering.BigDecimal.compare(x.v2.head, y.v2.head)
       if (cmp != 0) {
         return cmp
@@ -60,7 +54,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       val newThat = VaryRow(y.v1, y.v2.tail, y.v3, y.vs.tail, y.content)
       VaryRowOrdering.compare(newThis, newThat)
     }
-    case PickSortable.pickIntSortable => {
+    case Tools.sortKeyType.integerKeyType => {
       val cmp = Ordering.BigInt.compare(x.v3.head, y.v3.head)
       if (cmp != 0) {
         return cmp
@@ -73,7 +67,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
 
   @scala.annotation.tailrec
   def distance(x: VaryRow, y: VaryRow): Double = x.vs.head match {
-    case PickSortable.pickStringSortable => {
+    case Tools.sortKeyType.stringKeyType => {
       val cmp = Tools.StringDistance(x.v1.head, y.v1.head)
       if (cmp != 0.0) {
         return cmp
@@ -82,7 +76,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       val newThat = VaryRow(y.v1.tail, y.v2, y.v3, y.vs.tail, y.content)
       VaryRowOrdering.distance(newThis, newThat)
     }
-    case PickSortable.pickDecimalSortable => {
+    case Tools.sortKeyType.decimalKeyType => {
       val cmp = y.v2.head - x.v2.head
       if (cmp.abs > 0.001) {
         return cmp.toDouble  // TODO: Can go horribly wrong
@@ -91,7 +85,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       val newThat = VaryRow(y.v1, y.v2.tail, y.v3, y.vs.tail, y.content)
       VaryRowOrdering.distance(newThis, newThat)
     }
-    case PickSortable.pickIntSortable => {
+    case Tools.sortKeyType.integerKeyType => {
       val cmp = y.v3.head - x.v3.head
       if (cmp != 0) {
         return cmp.toDouble  // TODO: Can go horribly wrong

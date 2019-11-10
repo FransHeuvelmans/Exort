@@ -186,11 +186,42 @@ object ExtSort {
       sortedFiles
     }
 
+    def sortAsVaryRowFile(): List[TempSortedFile] = {
+      var iterRow = 1
+      var iterFile = 0
+      var sortedFiles: List[TempSortedFile] = Nil
+      var currentRow: Array[String] = parser.parseNext()
+      var currentDataSet: List[VaryRow] = Nil
+      while (currentRow != null) {
+        currentDataSet = Tools.convertToVaryRow(currentRow, settings) :: currentDataSet  // toDouble can fail
+        if (iterRow >= settings.rowSplit) {
+          val currentFixedSet = InSort.sortVaryRow(currentDataSet)
+          val outFile = Tools.tempOutputFile(rootLocation, iterFile)
+          Tools.writeToFile(currentFixedSet.toList, outFile, settings)
+          // Different SortedFile classes would be better but even better is make everything String/Long agnostic
+          sortedFiles = exort.VarySortedFile(currentDataSet.head, currentDataSet.last, outFile) :: sortedFiles
+          currentDataSet = Nil
+          iterFile += 1
+          iterRow = 0
+          print(".")
+        }
+        currentRow = parser.parseNext()
+        iterRow += 1
+      }
+      if (!currentDataSet.isEmpty) {
+        val currentFixedSet = InSort.sortVaryRow(currentDataSet)
+        val outFile = Tools.tempOutputFile(rootLocation, iterFile)
+        Tools.writeToFile(currentFixedSet.toList, outFile, settings)
+        sortedFiles = exort.VarySortedFile(currentDataSet.head, currentDataSet.last, outFile) :: sortedFiles
+      }
+      parser.stopParsing()
+      sortedFiles
+    }
+
 
     val sortedFiles = {
       if(settings.keyType.length > 1) {
-        println("NEED TO IMPLEMENT PARSING VARYROWs!!")
-        Nil
+        sortAsVaryRowFile()
       } else {
         settings.keyType(0) match {
           case Tools.sortKeyType.integerKeyType => sortAsLongFile(settings.keyNr(0))
@@ -201,7 +232,7 @@ object ExtSort {
     }
     // TODO: Make the sortedFiles Futures and then wait on all of them at the end
 
-    print("\nFinished parsing parts\n")
+    print("\nFinished parsing & sorting parts\n")
     sortedFiles.reverse
   }
 
@@ -302,50 +333,98 @@ object ExtSort {
      */
     var currentARow: Array[String] = parserA.parseNext()
     var currentBRow: Array[String] = parserB.parseNext()
+    var compareActive = true
     if(settings.keyType.length > 1) {
-      println("NEED TO IMPLEMENT PARSING VARYROWs!!")
+      var typedARow = Tools.convertToVaryRow(currentARow, settings, addSource = false)
+      var typedBRow = Tools.convertToVaryRow(currentBRow, settings, addSource = false)
+      while (compareActive) {
+        if (VaryRowOrdering.compare(typedARow, typedBRow) < 0) {
+          writer.writeRow(currentARow)
+          currentARow = parserA.parseNext()
+          if (currentARow != null) {
+            typedARow = Tools.convertToVaryRow(currentARow, settings, addSource = false)
+          } else {
+            compareActive = false
+          }
+        } else {
+          writer.writeRow(currentBRow)
+          currentBRow = parserB.parseNext()
+          if (currentBRow != null) {
+            typedBRow = Tools.convertToVaryRow(currentBRow, settings, addSource = false)
+          } else {
+            compareActive = false
+          }
+        }
+      }
     } else {
       val keyCol = settings.keyNr(0)
       settings.keyType(0) match {
         case Tools.sortKeyType.integerKeyType => {
-          while ((currentARow != null) && (currentBRow != null)) {
-            val typedARow = LongRow(currentARow(keyCol).toLong, Array())
-            val typedBRow = LongRow(currentBRow(keyCol).toLong, Array())
-            val swtch = LongRowOrdering.compare(typedARow, typedBRow)
-            if (swtch < 0) {
+          var typedARow = LongRow(currentARow(keyCol).toLong, Array())
+          var typedBRow = LongRow(currentBRow(keyCol).toLong, Array())
+          while (compareActive) {
+            if (LongRowOrdering.compare(typedARow, typedBRow) < 0) {
               writer.writeRow(currentARow)
               currentARow = parserA.parseNext()
+              if (currentARow != null) {
+                typedARow = LongRow(currentARow(keyCol).toLong, Array())
+              } else {
+                compareActive = false
+              }
             } else {
               writer.writeRow(currentBRow)
               currentBRow = parserB.parseNext()
+              if (currentBRow != null) {
+                typedBRow = LongRow(currentBRow(keyCol).toLong, Array())
+              } else {
+                compareActive = false
+              }
             }
           }
         }
         case Tools.sortKeyType.stringKeyType => {
-          while ((currentARow != null) && (currentBRow != null)) {
-            val typedARow = StringRow(currentARow(keyCol), Array())
-            val typedBRow = StringRow(currentBRow(keyCol), Array())
-            val swtch = StringRowOrdering.compare(typedARow, typedBRow)
-            if (swtch < 0) {
+          var typedARow = StringRow(currentARow(keyCol), Array())
+          var typedBRow = StringRow(currentBRow(keyCol), Array())
+          while (compareActive) {
+            if (StringRowOrdering.compare(typedARow, typedBRow) < 0) {
               writer.writeRow(currentARow)
               currentARow = parserA.parseNext()
+              if (currentARow != null) {
+                typedARow = StringRow(currentARow(keyCol), Array())
+              } else {
+                compareActive = false
+              }
             } else {
               writer.writeRow(currentBRow)
               currentBRow = parserB.parseNext()
+              if (currentBRow != null) {
+                typedBRow = StringRow(currentBRow(keyCol), Array())
+              } else {
+                compareActive = false
+              }
             }
           }
         }
         case Tools.sortKeyType.decimalKeyType => {
-          while ((currentARow != null) && (currentBRow != null)) {
-            val typedARow = DoubleRow(currentARow(keyCol).toDouble, Array())
-            val typedBRow = DoubleRow(currentBRow(keyCol).toDouble, Array())
-            val swtch = DoubleRowOrdering.compare(typedARow, typedBRow)
-            if (swtch < 0) {
+          var typedARow = DoubleRow(currentARow(keyCol).toDouble, Array())
+          var typedBRow = DoubleRow(currentBRow(keyCol).toDouble, Array())
+          while (compareActive) {
+            if (DoubleRowOrdering.compare(typedARow, typedBRow) < 0) {
               writer.writeRow(currentARow)
               currentARow = parserA.parseNext()
+              if (currentARow != null) {
+                typedARow = DoubleRow(currentARow(keyCol).toDouble, Array())
+              } else {
+                compareActive = false
+              }
             } else {
               writer.writeRow(currentBRow)
               currentBRow = parserB.parseNext()
+              if (currentBRow != null) {
+                typedBRow = DoubleRow(currentBRow(keyCol).toDouble, Array())
+              } else {
+                compareActive = false
+              }
             }
           }
         }
