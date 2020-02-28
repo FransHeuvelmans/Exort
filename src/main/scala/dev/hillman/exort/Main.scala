@@ -3,7 +3,7 @@ package dev.hillman.exort
 import java.io.File
 
 import com.univocity.parsers.tsv.{TsvWriter, TsvWriterSettings}
-import dev.hillman.exort.Tools.sortKeyType.{decimalKeyType, integerKeyType, sortKeyType, stringKeyType}
+import dev.hillman.exort.Tools.sortKeyType._
 
 case class ExortSetting(file: File,
                         rowSplit: Int = 20000,
@@ -118,6 +118,9 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
             case "d" => decimalKeyType
             case "i" => integerKeyType
             case "s" => stringKeyType
+            case "-d" => decimalNegKeyType
+            case "-i" => integerNegKeyType
+            case "-s" => stringNegKeyType
             case _ => return Left("Could not read key type")
           })
           return readArguments(tail, options.copy(keyType = ktypes))

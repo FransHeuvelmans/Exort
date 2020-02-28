@@ -5,7 +5,12 @@ import java.nio.file.{Files, Path}
 import scala.jdk.StreamConverters._
 
 import com.univocity.parsers.csv.{CsvParser, CsvParserSettings}
-import com.univocity.parsers.tsv.{TsvParser, TsvParserSettings, TsvWriter, TsvWriterSettings}
+import com.univocity.parsers.tsv.{
+  TsvParser,
+  TsvParserSettings,
+  TsvWriter,
+  TsvWriterSettings
+}
 import Tools.sortKeyType
 
 import scala.util.Random
@@ -13,7 +18,8 @@ import scala.util.Random
 object Tools {
   object sortKeyType extends Enumeration {
     type sortKeyType = Value
-    val decimalKeyType, integerKeyType, stringKeyType = Value
+    val decimalKeyType, decimalNegKeyType, integerKeyType, integerNegKeyType,
+    stringKeyType, stringNegKeyType = Value
   }
 
   def csvParser(sep: Char, hasHeader: Boolean): CsvParser = {
@@ -32,31 +38,36 @@ object Tools {
     new TsvParser(settings)
   }
 
-
   def createTempDir(): Path = {
-    val tempPrefix = "exsort_" + Random.alphanumeric.take(10).foldLeft("")((x: String, y: Char) => x + y)
+    val tempPrefix = "exsort_" + Random.alphanumeric
+      .take(10)
+      .foldLeft("")((x: String, y: Char) => x + y)
     Files.createTempDirectory(tempPrefix)
   }
 
-  def tempOutputFile(location: Path, nr: Int = 0): File = new File(location.toFile, s"p${nr}.tsv")
+  def tempOutputFile(location: Path, nr: Int = 0): File =
+    new File(location.toFile, s"p${nr}.tsv")
 
-  def writeToFile(data: Iterable[SortableRow], fileLoc: File, settings: ExortSetting) = {
+  def writeToFile(data: Iterable[SortableRow],
+                  fileLoc: File,
+                  settings: ExortSetting) = {
     val writer = new TsvWriter(fileLoc, new TsvWriterSettings)
-    val outArray: Iterable[Array[String]] = data.map((x: SortableRow) => x.getContent)
+    val outArray: Iterable[Array[String]] =
+      data.map((x: SortableRow) => x.getContent)
     outArray.foreach(writer.writeRow(_))
     writer.close()
   }
 
   /**
-   * Alphabetical distance (NO edit distance)
-   */
+    * Alphabetical distance (NO edit distance)
+    */
   @scala.annotation.tailrec
   def StringDistance(a: String, b: String): Double = {
-    if ((a == Nil) && (b == Nil)) {
+    if ((a.isEmpty) && (b.isEmpty)) {
       return 0.0
-    } else if (a == Nil) {
+    } else if (a.isEmpty) {
       return b.head.toDouble
-    } else if (b == Nil) {
+    } else if (b.isEmpty) {
       return -a.head.toDouble
     }
     val diff = b.head - a.head
@@ -75,25 +86,60 @@ object Tools {
     filePathList.map((x: Path) => x.toFile.delete())
   }
 
-  def convertToVaryRow(inSource: Array[String], setting: ExortSetting, addSource: Boolean = true): VaryRow = {
+  def convertToVaryRow(inSource: Array[String],
+                       setting: ExortSetting,
+                       addSource: Boolean = true): VaryRow = {
 
     @scala.annotation.tailrec
     def createRow(tempSetting: ExortSetting, outRow: VaryRow): VaryRow = {
       tempSetting.keyType match {
         case sortKeyType.integerKeyType :: tail => {
-          val newRow = outRow.copy(v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toInt)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), newRow)
+          val newRow = outRow.copy(
+            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toInt)
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
+                                     keyNr = tempSetting.keyNr.tail),
+                    newRow)
+        }
+        case sortKeyType.integerNegKeyType :: tail => {
+          val newRow = outRow.copy(
+            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toInt)
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
+                                     keyNr = tempSetting.keyNr.tail),
+                    newRow)
         }
         case sortKeyType.decimalKeyType :: tail => {
-          val newRow = outRow.copy(v2 = outRow.v2 :+ inSource(tempSetting.keyNr.head).toDouble)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), newRow)
+          val newRow = outRow.copy(
+            v2 = outRow.v2 :+ inSource(tempSetting.keyNr.head).toDouble)
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
+                                     keyNr = tempSetting.keyNr.tail),
+                    newRow)
+        }
+        case sortKeyType.decimalNegKeyType :: tail => {
+          val newRow = outRow.copy(
+            v2 = outRow.v2 :+ inSource(tempSetting.keyNr.head).toDouble)
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
+                                     keyNr = tempSetting.keyNr.tail),
+                    newRow)
         }
         case sortKeyType.stringKeyType :: tail => {
-          val newRow = outRow.copy(v1 = outRow.v1 :+ inSource(tempSetting.keyNr.head))
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), newRow)
+          val newRow =
+            outRow.copy(v1 = outRow.v1 :+ inSource(tempSetting.keyNr.head))
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
+                                     keyNr = tempSetting.keyNr.tail),
+                    newRow)
+        }
+        case sortKeyType.stringNegKeyType :: tail => {
+          val newRow =
+            outRow.copy(v1 = outRow.v1 :+ inSource(tempSetting.keyNr.head))
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
+                                     keyNr = tempSetting.keyNr.tail),
+                    newRow)
         }
         case Nil => outRow
-        case _ => createRow(tempSetting.copy(keyType = tempSetting.keyType.tail, keyNr = tempSetting.keyNr.tail), outRow)
+        case _ =>
+          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
+                                     keyNr = tempSetting.keyNr.tail),
+                    outRow)
       }
     }
     val emptyRow = if (addSource) {
@@ -103,4 +149,6 @@ object Tools {
     }
     createRow(setting, emptyRow)
   }
+
+  // Todo -> create a VaryTypeFile from a list of VeryTypeRows...
 }

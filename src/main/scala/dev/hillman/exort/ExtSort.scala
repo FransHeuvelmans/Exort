@@ -14,7 +14,8 @@ sealed trait TempSortedFile {
   def compare(other: TempSortedFile): Double
   def file: File
 }
-case class LongSortedFile(vlow: Long, vhigh: Long, file: File) extends TempSortedFile {
+case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
+    extends TempSortedFile {
   override def compare(other: TempSortedFile): Double = {
     other match {
       case o: LongSortedFile => {
@@ -30,7 +31,8 @@ case class LongSortedFile(vlow: Long, vhigh: Long, file: File) extends TempSorte
     }
   }
 }
-case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File) extends TempSortedFile  {
+case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
+    extends TempSortedFile {
   override def compare(other: TempSortedFile): Double = {
     other match {
       case o: LongSortedFile => {
@@ -46,7 +48,8 @@ case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File) extends Tem
     }
   }
 }
-case class StringSortedFile(vlow: String, vhigh:String, file: File) extends TempSortedFile {
+case class StringSortedFile(vlow: String, vhigh: String, file: File)
+    extends TempSortedFile {
   override def compare(other: TempSortedFile): Double = {
     other match {
       case o: StringSortedFile => {
@@ -62,7 +65,9 @@ case class StringSortedFile(vlow: String, vhigh:String, file: File) extends Temp
     }
   }
 }
-case class VarySortedFile(vlow: VaryRow, vhigh:VaryRow, file: File) extends  TempSortedFile {
+case class VarySortedFile(vlow: VaryRow, vhigh: VaryRow, file: File)
+    extends TempSortedFile {
+  // TODO Needs a good testcase
   override def compare(other: TempSortedFile): Double = {
     other match {
       case o: VarySortedFile => {
@@ -79,18 +84,17 @@ case class VarySortedFile(vlow: VaryRow, vhigh:VaryRow, file: File) extends  Tem
   }
 }
 
-
-
 object ExtSort {
 
-  def sortParts(rootLocation: Path, settings: ExortSetting): List[TempSortedFile] = {
+  def sortParts(rootLocation: Path,
+                settings: ExortSetting): List[TempSortedFile] = {
     val parser = settings.sep match {
       case '\t' => Tools.tsvParser(settings.skipHeader)
-      case _ => Tools.csvParser(settings.sep, settings.skipHeader)
+      case _    => Tools.csvParser(settings.sep, settings.skipHeader)
     }
     parser beginParsing settings.file
 
-    def sortAsLongFile(keyCol: Int): List[TempSortedFile] = {
+    def sortAsLongFile(keyCol: Int, reverse: Boolean): List[TempSortedFile] = {
       var iterRow = 1
       var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
@@ -100,10 +104,20 @@ object ExtSort {
         currentDataSet = LongRow(currentRow(keyCol).toLong, currentRow) :: currentDataSet // toLong can fail
         if (iterRow >= settings.rowSplit) {
           print("'")
-          val currentFixedSet = InSort.sortLongRow(currentDataSet)
+          val currentFixedSet =
+            if (reverse) InSort.sortLongRow(currentDataSet, true)
+            else InSort.sortLongRow(currentDataSet)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-          sortedFiles = exort.LongSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+          sortedFiles = if (reverse) {
+            exort.LongSortedFile(currentDataSet.last.v,
+                                 currentDataSet.head.v,
+                                 outFile) :: sortedFiles
+          } else {
+            exort.LongSortedFile(currentDataSet.head.v,
+                                 currentDataSet.last.v,
+                                 outFile) :: sortedFiles
+          }
           currentDataSet = Nil
           iterFile += 1
           iterRow = 0
@@ -112,17 +126,26 @@ object ExtSort {
         currentRow = parser.parseNext()
         iterRow += 1
       }
-      if (!currentDataSet.isEmpty) {
+      if (currentDataSet.nonEmpty) {
         val currentFixedSet = InSort.sortLongRow(currentDataSet)
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-        sortedFiles = exort.LongSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+        sortedFiles = if (reverse) {
+          exort.LongSortedFile(currentDataSet.last.v,
+                               currentDataSet.head.v,
+                               outFile) :: sortedFiles
+        } else {
+          exort.LongSortedFile(currentDataSet.head.v,
+                               currentDataSet.last.v,
+                               outFile) :: sortedFiles
+        }
       }
       parser.stopParsing()
       sortedFiles
     }
 
-    def sortAsStringFile(keyCol: Int): List[TempSortedFile] = {
+    def sortAsStringFile(keyCol: Int,
+                         reverse: Boolean): List[TempSortedFile] = {
       var iterRow = 1
       var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
@@ -131,11 +154,21 @@ object ExtSort {
       while (currentRow != null) {
         currentDataSet = StringRow(currentRow(keyCol: Int), currentRow) :: currentDataSet
         if (iterRow >= settings.rowSplit) {
-          val currentFixedSet = InSort.sortStringRow(currentDataSet)
+          val currentFixedSet =
+            if (reverse) InSort.sortStringRow(currentDataSet, true)
+            else InSort.sortStringRow(currentDataSet)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
-          sortedFiles = exort.StringSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+          sortedFiles = if (reverse) {
+            exort.StringSortedFile(currentDataSet.last.v,
+                                   currentDataSet.head.v,
+                                   outFile) :: sortedFiles
+          } else {
+            exort.StringSortedFile(currentDataSet.head.v,
+                                   currentDataSet.last.v,
+                                   outFile) :: sortedFiles
+          }
           currentDataSet = Nil
           iterFile += 1
           iterRow = 0
@@ -144,30 +177,49 @@ object ExtSort {
         currentRow = parser.parseNext()
         iterRow += 1
       }
-      if (!currentDataSet.isEmpty) {
+      if (currentDataSet.nonEmpty) {
         val currentFixedSet = InSort.sortStringRow(currentDataSet)
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-        sortedFiles = exort.StringSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+        sortedFiles = if (reverse) {
+          exort.StringSortedFile(currentDataSet.last.v,
+                                 currentDataSet.head.v,
+                                 outFile) :: sortedFiles
+        } else {
+          exort.StringSortedFile(currentDataSet.head.v,
+                                 currentDataSet.last.v,
+                                 outFile) :: sortedFiles
+        }
       }
       parser.stopParsing()
       sortedFiles
     }
 
-    def sortAsDoubleFile(keyCol: Int): List[TempSortedFile] = {
+    def sortAsDoubleFile(keyCol: Int,
+                         reverse: Boolean): List[TempSortedFile] = {
       var iterRow = 1
       var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
       var currentDataSet: List[DoubleRow] = Nil
       while (currentRow != null) {
-        currentDataSet = DoubleRow(currentRow(keyCol: Int).toDouble, currentRow) :: currentDataSet  // toDouble can fail
+        currentDataSet = DoubleRow(currentRow(keyCol: Int).toDouble, currentRow) :: currentDataSet // toDouble can fail
         if (iterRow >= settings.rowSplit) {
-          val currentFixedSet = InSort.sortDoubleRow(currentDataSet)
+          val currentFixedSet =
+            if (reverse) InSort.sortDoubleRow(currentDataSet, true)
+            else InSort.sortDoubleRow(currentDataSet)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
-          sortedFiles = exort.DoubleSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+          sortedFiles = if (reverse) {
+            exort.DoubleSortedFile(currentDataSet.last.v,
+                                   currentDataSet.head.v,
+                                   outFile) :: sortedFiles
+          } else {
+            exort.DoubleSortedFile(currentDataSet.head.v,
+                                   currentDataSet.last.v,
+                                   outFile) :: sortedFiles
+          }
           currentDataSet = Nil
           iterFile += 1
           iterRow = 0
@@ -176,11 +228,19 @@ object ExtSort {
         currentRow = parser.parseNext()
         iterRow += 1
       }
-      if (!currentDataSet.isEmpty) {
+      if (currentDataSet.nonEmpty) {
         val currentFixedSet = InSort.sortDoubleRow(currentDataSet)
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-        sortedFiles = exort.DoubleSortedFile(currentDataSet.head.v, currentDataSet.last.v, outFile) :: sortedFiles
+        sortedFiles = if (reverse) {
+          exort.DoubleSortedFile(currentDataSet.last.v,
+                                 currentDataSet.head.v,
+                                 outFile) :: sortedFiles
+        } else {
+          exort.DoubleSortedFile(currentDataSet.head.v,
+                                 currentDataSet.last.v,
+                                 outFile) :: sortedFiles
+        }
       }
       parser.stopParsing()
       sortedFiles
@@ -193,13 +253,15 @@ object ExtSort {
       var currentRow: Array[String] = parser.parseNext()
       var currentDataSet: List[VaryRow] = Nil
       while (currentRow != null) {
-        currentDataSet = Tools.convertToVaryRow(currentRow, settings) :: currentDataSet  // toDouble can fail
+        currentDataSet = Tools.convertToVaryRow(currentRow, settings) :: currentDataSet // toDouble can fail
         if (iterRow >= settings.rowSplit) {
           val currentFixedSet = InSort.sortVaryRow(currentDataSet)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
-          sortedFiles = exort.VarySortedFile(currentDataSet.head, currentDataSet.last, outFile) :: sortedFiles
+          sortedFiles = exort.VarySortedFile(currentDataSet.head,
+                                             currentDataSet.last,
+                                             outFile) :: sortedFiles
           currentDataSet = Nil
           iterFile += 1
           iterRow = 0
@@ -208,47 +270,60 @@ object ExtSort {
         currentRow = parser.parseNext()
         iterRow += 1
       }
-      if (!currentDataSet.isEmpty) {
+      if (currentDataSet.nonEmpty) {
         val currentFixedSet = InSort.sortVaryRow(currentDataSet)
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
-        sortedFiles = exort.VarySortedFile(currentDataSet.head, currentDataSet.last, outFile) :: sortedFiles
+        sortedFiles = exort.VarySortedFile(currentDataSet.head,
+                                           currentDataSet.last,
+                                           outFile) :: sortedFiles
       }
       parser.stopParsing()
       sortedFiles
     }
 
-
     val sortedFiles = {
-      if(settings.keyType.length > 1) {
+      if (settings.keyType.length > 1) {
         sortAsVaryRowFile()
       } else {
         settings.keyType(0) match {
-          case Tools.sortKeyType.integerKeyType => sortAsLongFile(settings.keyNr(0))
-          case Tools.sortKeyType.stringKeyType => sortAsStringFile(settings.keyNr(0))
-          case Tools.sortKeyType.decimalKeyType => sortAsDoubleFile(settings.keyNr(0))
+          case Tools.sortKeyType.integerKeyType =>
+            sortAsLongFile(settings.keyNr(0), false)
+          case Tools.sortKeyType.stringKeyType =>
+            sortAsStringFile(settings.keyNr(0), false)
+          case Tools.sortKeyType.decimalKeyType =>
+            sortAsDoubleFile(settings.keyNr(0), false)
+          case Tools.sortKeyType.integerNegKeyType =>
+            sortAsLongFile(settings.keyNr(0), true)
+          case Tools.sortKeyType.stringNegKeyType =>
+            sortAsStringFile(settings.keyNr(0), true)
+          case Tools.sortKeyType.decimalNegKeyType =>
+            sortAsDoubleFile(settings.keyNr(0), true)
         }
       }
     }
-    // TODO: Make the sortedFiles Futures and then wait on all of them at the end
 
     print("\nFinished parsing & sorting parts\n")
     sortedFiles.reverse
   }
 
   /**
-   * Concatenate two files
-   */
-  def concatSortedFiles(fileA: TempSortedFile, fileB: TempSortedFile, rootLocation: Path): TempSortedFile = {
+    * Concatenate two files
+    */
+  def concatSortedFiles(fileA: TempSortedFile,
+                        fileB: TempSortedFile,
+                        rootLocation: Path): TempSortedFile = {
     val nameA = fileA.file.getName().replace(".tsv", "")
     val nameB = fileB.file.getName().replace(".tsv", "")
-    val outFile = new File(rootLocation.toFile, List(nameA, "-", nameB, ".tsv").reduceLeft((a, b) => a + b))
+    val outFile = new File(
+      rootLocation.toFile,
+      List(nameA, "-", nameB, ".tsv").reduceLeft((a, b) => a + b))
     val fileWriter = new PrintWriter(outFile)
 
     def writeToFile(inp: File): Unit = {
       val reader = new BufferedReader(new FileReader(inp))
       var line = reader.readLine()
-      while(line != null) {
+      while (line != null) {
         fileWriter.println(line)
         line = reader.readLine()
       }
@@ -261,7 +336,7 @@ object ExtSort {
     fileWriter.close()
     fileA match {
       case a: LongSortedFile => {
-        val b = fileB.asInstanceOf[LongSortedFile]  // Danger => simply casts
+        val b = fileB.asInstanceOf[LongSortedFile] // Danger => simply casts
         LongSortedFile(a.vlow, b.vhigh, outFile)
       }
       case a: DoubleSortedFile => {
@@ -279,32 +354,55 @@ object ExtSort {
     }
   }
 
-  def mergeAccidentalSorted(fileList: List[TempSortedFile], rootLocation: Path): List[File] = {
+  def mergeAccidentalSorted(fileList: List[TempSortedFile],
+                            rootLocation: Path): List[File] = {
+
     /**
-     * Looks at inter-file distance and merges (max) 2 closest files (TODO: Optimal better combining)
-     */
+      * Looks at inter-file distance and merges (max) 2 closest files (TODO: Optimal better combining)
+      */
     @scala.annotation.tailrec
-    def alreadySortedCheck(checked: List[File], toCheck: List[TempSortedFile]): List[File] = {
+    def alreadySortedCheck(checked: List[File],
+                           toCheck: List[TempSortedFile]): List[File] = {
       implicit val implicitOrdering = Ordering.Double.IeeeOrdering
       toCheck match {
-        case Nil => checked
+        case Nil        => checked
         case tsA :: Nil => tsA.file :: checked
         case tsA :: tsMore => {
-          val distances = tsMore.zipWithIndex.map((x) => (tsA.compare(x._1), x._2)).sorted
+          val distances =
+            tsMore.zipWithIndex.map((x) => (tsA.compare(x._1), x._2)).sorted
           val negativeDistances = distances.filter(_._1 < 0)
           val positiveDistances = distances.filter(_._1 > 1)
           if ((negativeDistances.length > 0) && (positiveDistances.length > 0)) {
-            val negCombination = concatSortedFiles(tsMore(negativeDistances.last._2), tsA, rootLocation)
-            val newNegPosCombination = concatSortedFiles(negCombination, tsMore(positiveDistances.head._2), rootLocation)
-            val poppedList = toCheck diff List(tsA, tsMore(negativeDistances.last._2), tsMore(positiveDistances.head._2))
+            val negCombination = concatSortedFiles(
+              tsMore(negativeDistances.last._2),
+              tsA,
+              rootLocation)
+            val newNegPosCombination = concatSortedFiles(
+              negCombination,
+              tsMore(positiveDistances.head._2),
+              rootLocation)
+            val poppedList = toCheck diff List(
+              tsA,
+              tsMore(negativeDistances.last._2),
+              tsMore(positiveDistances.head._2))
             alreadySortedCheck(checked, newNegPosCombination :: poppedList)
           } else if (negativeDistances.length > 0) {
-            val newCombination = concatSortedFiles(tsMore(negativeDistances.last._2), tsA, rootLocation)
-            val poppedList = toCheck diff List(tsA, tsMore(negativeDistances.last._2))
+            val newCombination = concatSortedFiles(
+              tsMore(negativeDistances.last._2),
+              tsA,
+              rootLocation)
+            val poppedList = toCheck diff List(
+              tsA,
+              tsMore(negativeDistances.last._2))
             alreadySortedCheck(checked, newCombination :: poppedList)
           } else if (positiveDistances.length > 0) {
-            val newCombination = concatSortedFiles(tsA, tsMore(positiveDistances.head._2), rootLocation)
-            val poppedList = toCheck diff List(tsA, tsMore(positiveDistances.head._2))
+            val newCombination = concatSortedFiles(
+              tsA,
+              tsMore(positiveDistances.head._2),
+              rootLocation)
+            val poppedList = toCheck diff List(
+              tsA,
+              tsMore(positiveDistances.head._2))
             alreadySortedCheck(checked, newCombination :: poppedList)
           } else {
             alreadySortedCheck(tsA.file :: checked, tsMore)
@@ -316,9 +414,13 @@ object ExtSort {
   }
 
   /**
-   * Merge 2 sorted files
-   */
-  def mergeFiles(fileA: File, fileB: File, rootLocation: Path, nr: Int, settings: ExortSetting): File = {
+    * Merge 2 sorted files
+    */
+  def mergeFiles(fileA: File,
+                 fileB: File,
+                 rootLocation: Path,
+                 nr: Int,
+                 settings: ExortSetting): File = {
     val parserA = Tools.tsvParser(false)
     parserA.beginParsing(fileA)
     val parserB = Tools.tsvParser(false)
@@ -334,15 +436,18 @@ object ExtSort {
     var currentARow: Array[String] = parserA.parseNext()
     var currentBRow: Array[String] = parserB.parseNext()
     var compareActive = true
-    if(settings.keyType.length > 1) {
-      var typedARow = Tools.convertToVaryRow(currentARow, settings, addSource = false)
-      var typedBRow = Tools.convertToVaryRow(currentBRow, settings, addSource = false)
+    if (settings.keyType.length > 1) {
+      var typedARow =
+        Tools.convertToVaryRow(currentARow, settings, addSource = false)
+      var typedBRow =
+        Tools.convertToVaryRow(currentBRow, settings, addSource = false)
       while (compareActive) {
         if (VaryRowOrdering.compare(typedARow, typedBRow) < 0) {
           writer.writeRow(currentARow)
           currentARow = parserA.parseNext()
           if (currentARow != null) {
-            typedARow = Tools.convertToVaryRow(currentARow, settings, addSource = false)
+            typedARow =
+              Tools.convertToVaryRow(currentARow, settings, addSource = false)
           } else {
             compareActive = false
           }
@@ -350,7 +455,8 @@ object ExtSort {
           writer.writeRow(currentBRow)
           currentBRow = parserB.parseNext()
           if (currentBRow != null) {
-            typedBRow = Tools.convertToVaryRow(currentBRow, settings, addSource = false)
+            typedBRow =
+              Tools.convertToVaryRow(currentBRow, settings, addSource = false)
           } else {
             compareActive = false
           }
@@ -445,23 +551,27 @@ object ExtSort {
     outFile
   }
 
-  def externalMergeSort(files: List[File], rootLocation: Path, setting: ExortSetting): File = {
+  def externalMergeSort(files: List[File],
+                        rootLocation: Path,
+                        setting: ExortSetting): File = {
     implicit val ec: ExecutionContext = ExecutionContext.global
     val workFiles: List[Future[File]] = files.map(Future(_))
 
-    def processPairs(pairs: List[Future[File]], callNr: Int): List[Future[File]] = {
+    def processPairs(pairs: List[Future[File]],
+                     callNr: Int): List[Future[File]] = {
       val (partA, partB) = pairs.splitAt(pairs.length / 2)
       // Every round merges has a unique group-name and then lazyzip unique file-ids
       val uniqueName = callNr * 1000
       val grouped = partA.lazyZip(partB).lazyZip(0 until partA.length).toList
-      grouped.map(x => Future {
-        mergeFiles(
-          Await.result(x._1, Duration.Inf),
-          Await.result(x._2, Duration.Inf),
-          rootLocation,
-          uniqueName + x._3,
-          setting
-        )
+      grouped.map(x =>
+        Future {
+          mergeFiles(
+            Await.result(x._1, Duration.Inf),
+            Await.result(x._2, Duration.Inf),
+            rootLocation,
+            uniqueName + x._3,
+            setting
+          )
       })
     }
 
@@ -471,7 +581,7 @@ object ExtSort {
         // If there is a single file left, materialize result and return
         return Await.result(files.head, Duration.Inf)
       }
-      val outList = if((files.length % 2) != 0) {
+      val outList = if ((files.length % 2) != 0) {
         // If total is uneven, first join an even amount
         files.head :: processPairs(files.tail, callNr)
       } else {
@@ -491,7 +601,9 @@ object ExtSort {
     println(s"Simply merged parts ${mergeList}")
     val processedFile = externalMergeSort(mergeList, tempDir, setting)
     println("Sorting done")
-    Files.move(processedFile.toPath(), (new File("output.csv")).toPath, StandardCopyOption.REPLACE_EXISTING)
+    Files.move(processedFile.toPath(),
+               (new File("output.csv")).toPath,
+               StandardCopyOption.REPLACE_EXISTING)
     Tools.cleanDirectory(tempDir)
   }
 }

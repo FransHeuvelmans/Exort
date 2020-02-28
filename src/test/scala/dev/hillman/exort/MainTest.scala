@@ -37,4 +37,12 @@ class MainTest extends FlatSpec with Matchers {
     options.rowSplit === 64
   }
 
+  "many key and type options" should "be loaded into the config" in {
+    val testFileLoc = "testbig.csv"
+    val invocation = Array("--key", "6,2", "--keyVal", "-d,s", testFileLoc)
+    val options = Main.parseArgs(invocation).toOption.get
+    options.keyType === List(Tools.sortKeyType.decimalNegKeyType, Tools.sortKeyType.stringKeyType)
+    options.keyNr === List(6, 2)
+  }
+
 }
