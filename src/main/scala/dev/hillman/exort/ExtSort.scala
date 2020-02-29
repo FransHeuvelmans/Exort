@@ -105,7 +105,7 @@ object ExtSort {
         if (iterRow >= settings.rowSplit) {
           print("'")
           val currentFixedSet =
-            if (reverse) InSort.sortLongRow(currentDataSet, true)
+            if (reverse) InSort.sortLongRow(currentDataSet, reverse)
             else InSort.sortLongRow(currentDataSet)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
@@ -320,6 +320,7 @@ object ExtSort {
       List(nameA, "-", nameB, ".tsv").reduceLeft((a, b) => a + b))
     val fileWriter = new PrintWriter(outFile)
 
+    // Take other file and write contents to single file (fileWriter)
     def writeToFile(inp: File): Unit = {
       val reader = new BufferedReader(new FileReader(inp))
       var line = reader.readLine()
