@@ -6,83 +6,9 @@ import java.nio.file.{Files, Path, StandardCopyOption}
 import com.univocity.parsers.tsv.{TsvWriter, TsvWriterSettings}
 import dev.hillman.exort
 
+import scala.collection.SeqView.Reverse
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
-
-sealed trait TempSortedFile {
-  // Distance between two sorted files (if there is any)
-  def compare(other: TempSortedFile): Double
-  def file: File
-}
-case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
-    extends TempSortedFile {
-  override def compare(other: TempSortedFile): Double = {
-    other match {
-      case o: LongSortedFile => {
-        if (this.vhigh < o.vlow) {
-          (o.vlow - this.vhigh).toDouble
-        } else if (this.vlow > o.vhigh) {
-          (o.vhigh - this.vlow).toDouble
-        } else {
-          0.0
-        }
-      }
-      case _ => 0.0
-    }
-  }
-}
-case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
-    extends TempSortedFile {
-  override def compare(other: TempSortedFile): Double = {
-    other match {
-      case o: LongSortedFile => {
-        if (this.vhigh < o.vlow) {
-          (o.vlow - this.vhigh)
-        } else if (this.vlow > o.vhigh) {
-          (o.vhigh - this.vlow)
-        } else {
-          0.0
-        }
-      }
-      case _ => 0.0
-    }
-  }
-}
-case class StringSortedFile(vlow: String, vhigh: String, file: File)
-    extends TempSortedFile {
-  override def compare(other: TempSortedFile): Double = {
-    other match {
-      case o: StringSortedFile => {
-        if (this.vhigh < o.vlow) {
-          Tools.StringDistance(this.vhigh, o.vlow)
-        } else if (this.vlow > o.vhigh) {
-          Tools.StringDistance(this.vlow, o.vhigh)
-        } else {
-          0.0
-        }
-      }
-      case _ => 0.0
-    }
-  }
-}
-case class VarySortedFile(vlow: VaryRow, vhigh: VaryRow, file: File)
-    extends TempSortedFile {
-  // TODO Needs a good testcase
-  override def compare(other: TempSortedFile): Double = {
-    other match {
-      case o: VarySortedFile => {
-        if (InSort.varyRowOrdering.compare(this.vhigh, o.vlow) > 0) {
-          InSort.varyRowOrdering.distance(this.vhigh, o.vlow)
-        } else if (InSort.varyRowOrdering.compare(this.vlow, o.vhigh) < 0) {
-          InSort.varyRowOrdering.distance(this.vlow, o.vhigh)
-        } else {
-          0.0
-        }
-      }
-      case _ => 0.0
-    }
-  }
-}
 
 object ExtSort {
 
@@ -104,18 +30,16 @@ object ExtSort {
         currentDataSet = LongRow(currentRow(keyCol).toLong, currentRow) :: currentDataSet // toLong can fail
         if (iterRow >= settings.rowSplit) {
           print("'")
-          val currentFixedSet =
-            if (reverse) InSort.sortLongRow(currentDataSet, reverse)
-            else InSort.sortLongRow(currentDataSet)
+          val currentFixedSet = InSort.sortLongRow(currentDataSet, reverse)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           sortedFiles = if (reverse) {
-            exort.LongSortedFile(currentDataSet.last.v,
-                                 currentDataSet.head.v,
+            exort.LongSortedFile(currentFixedSet.last.v,
+                                 currentFixedSet.head.v,
                                  outFile) :: sortedFiles
           } else {
-            exort.LongSortedFile(currentDataSet.head.v,
-                                 currentDataSet.last.v,
+            exort.LongSortedFile(currentFixedSet.head.v,
+                                 currentFixedSet.last.v,
                                  outFile) :: sortedFiles
           }
           currentDataSet = Nil
@@ -131,12 +55,12 @@ object ExtSort {
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
         sortedFiles = if (reverse) {
-          exort.LongSortedFile(currentDataSet.last.v,
-                               currentDataSet.head.v,
+          exort.LongSortedFile(currentFixedSet.last.v,
+                               currentFixedSet.head.v,
                                outFile) :: sortedFiles
         } else {
-          exort.LongSortedFile(currentDataSet.head.v,
-                               currentDataSet.last.v,
+          exort.LongSortedFile(currentFixedSet.head.v,
+                               currentFixedSet.last.v,
                                outFile) :: sortedFiles
         }
       }
@@ -154,19 +78,17 @@ object ExtSort {
       while (currentRow != null) {
         currentDataSet = StringRow(currentRow(keyCol: Int), currentRow) :: currentDataSet
         if (iterRow >= settings.rowSplit) {
-          val currentFixedSet =
-            if (reverse) InSort.sortStringRow(currentDataSet, true)
-            else InSort.sortStringRow(currentDataSet)
+          val currentFixedSet = InSort.sortStringRow(currentDataSet, reverse)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
           sortedFiles = if (reverse) {
-            exort.StringSortedFile(currentDataSet.last.v,
-                                   currentDataSet.head.v,
+            exort.StringSortedFile(currentFixedSet.last.v,
+                                   currentFixedSet.head.v,
                                    outFile) :: sortedFiles
           } else {
-            exort.StringSortedFile(currentDataSet.head.v,
-                                   currentDataSet.last.v,
+            exort.StringSortedFile(currentFixedSet.head.v,
+                                   currentFixedSet.last.v,
                                    outFile) :: sortedFiles
           }
           currentDataSet = Nil
@@ -182,12 +104,12 @@ object ExtSort {
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
         sortedFiles = if (reverse) {
-          exort.StringSortedFile(currentDataSet.last.v,
-                                 currentDataSet.head.v,
+          exort.StringSortedFile(currentFixedSet.last.v,
+                                 currentFixedSet.head.v,
                                  outFile) :: sortedFiles
         } else {
-          exort.StringSortedFile(currentDataSet.head.v,
-                                 currentDataSet.last.v,
+          exort.StringSortedFile(currentFixedSet.head.v,
+                                 currentFixedSet.last.v,
                                  outFile) :: sortedFiles
         }
       }
@@ -205,19 +127,17 @@ object ExtSort {
       while (currentRow != null) {
         currentDataSet = DoubleRow(currentRow(keyCol: Int).toDouble, currentRow) :: currentDataSet // toDouble can fail
         if (iterRow >= settings.rowSplit) {
-          val currentFixedSet =
-            if (reverse) InSort.sortDoubleRow(currentDataSet, true)
-            else InSort.sortDoubleRow(currentDataSet)
+          val currentFixedSet = InSort.sortDoubleRow(currentDataSet, reverse)
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
           sortedFiles = if (reverse) {
-            exort.DoubleSortedFile(currentDataSet.last.v,
-                                   currentDataSet.head.v,
+            exort.DoubleSortedFile(currentFixedSet.last.v,
+                                   currentFixedSet.head.v,
                                    outFile) :: sortedFiles
           } else {
-            exort.DoubleSortedFile(currentDataSet.head.v,
-                                   currentDataSet.last.v,
+            exort.DoubleSortedFile(currentFixedSet.head.v,
+                                   currentFixedSet.last.v,
                                    outFile) :: sortedFiles
           }
           currentDataSet = Nil
@@ -233,12 +153,12 @@ object ExtSort {
         val outFile = Tools.tempOutputFile(rootLocation, iterFile)
         Tools.writeToFile(currentFixedSet.toList, outFile, settings)
         sortedFiles = if (reverse) {
-          exort.DoubleSortedFile(currentDataSet.last.v,
-                                 currentDataSet.head.v,
+          exort.DoubleSortedFile(currentFixedSet.last.v,
+                                 currentFixedSet.head.v,
                                  outFile) :: sortedFiles
         } else {
-          exort.DoubleSortedFile(currentDataSet.head.v,
-                                 currentDataSet.last.v,
+          exort.DoubleSortedFile(currentFixedSet.head.v,
+                                 currentFixedSet.last.v,
                                  outFile) :: sortedFiles
         }
       }
@@ -308,7 +228,7 @@ object ExtSort {
   }
 
   /**
-    * Concatenate two files
+    * Concatenate two files (Warning: Does no checks of the data!)
     */
   def concatSortedFiles(fileA: TempSortedFile,
                         fileB: TempSortedFile,
@@ -338,7 +258,7 @@ object ExtSort {
     fileA match {
       case a: LongSortedFile => {
         val b = fileB.asInstanceOf[LongSortedFile] // Danger => simply casts
-        LongSortedFile(a.vlow, b.vhigh, outFile)
+        LongSortedFile(a.vlow, b.vhigh, outFile) // TODO: Check neg logic still holds
       }
       case a: DoubleSortedFile => {
         val b = fileB.asInstanceOf[DoubleSortedFile]
@@ -369,41 +289,43 @@ object ExtSort {
         case Nil        => checked
         case tsA :: Nil => tsA.file :: checked
         case tsA :: tsMore => {
-          val distances =
-            tsMore.zipWithIndex.map((x) => (tsA.compare(x._1), x._2)).sorted
-          val negativeDistances = distances.filter(_._1 < 0)
-          val positiveDistances = distances.filter(_._1 > 1)
-          if ((negativeDistances.length > 0) && (positiveDistances.length > 0)) {
+          val distances = FileSort.sortDistances(
+            tsMore.zipWithIndex.map((x) => (tsA.distance(x._1), x._2)))
+          val beforeDistances =
+            distances.filter(di => FileSort.gt(di._1, Nil)) // res > 0 -> tsA after
+          val afterDistances =
+            distances.filter(di => FileSort.lt(di._1, Nil)) // res < 0 -> tsA before
+          if (beforeDistances.nonEmpty && afterDistances.nonEmpty) {
             val negCombination = concatSortedFiles(
-              tsMore(negativeDistances.last._2),
+              tsMore(beforeDistances.last._2),
               tsA,
               rootLocation)
             val newNegPosCombination = concatSortedFiles(
               negCombination,
-              tsMore(positiveDistances.head._2),
+              tsMore(afterDistances.head._2),
               rootLocation)
             val poppedList = toCheck diff List(
               tsA,
-              tsMore(negativeDistances.last._2),
-              tsMore(positiveDistances.head._2))
+              tsMore(beforeDistances.last._2),
+              tsMore(afterDistances.head._2))
             alreadySortedCheck(checked, newNegPosCombination :: poppedList)
-          } else if (negativeDistances.length > 0) {
+          } else if (beforeDistances.nonEmpty) {
             val newCombination = concatSortedFiles(
-              tsMore(negativeDistances.last._2),
+              tsMore(beforeDistances.last._2),
               tsA,
               rootLocation)
             val poppedList = toCheck diff List(
               tsA,
-              tsMore(negativeDistances.last._2))
+              tsMore(beforeDistances.last._2))
             alreadySortedCheck(checked, newCombination :: poppedList)
-          } else if (positiveDistances.length > 0) {
+          } else if (afterDistances.nonEmpty) {
             val newCombination = concatSortedFiles(
               tsA,
-              tsMore(positiveDistances.head._2),
+              tsMore(afterDistances.head._2),
               rootLocation)
             val poppedList = toCheck diff List(
               tsA,
-              tsMore(positiveDistances.head._2))
+              tsMore(afterDistances.head._2))
             alreadySortedCheck(checked, newCombination :: poppedList)
           } else {
             alreadySortedCheck(tsA.file :: checked, tsMore)
@@ -464,13 +386,36 @@ object ExtSort {
         }
       }
     } else {
-      val keyCol = settings.keyNr(0)
-      settings.keyType(0) match {
+      val keyCol = settings.keyNr.head
+      settings.keyType.head match {
         case Tools.sortKeyType.integerKeyType => {
           var typedARow = LongRow(currentARow(keyCol).toLong, Array())
           var typedBRow = LongRow(currentBRow(keyCol).toLong, Array())
           while (compareActive) {
             if (LongRowOrdering.compare(typedARow, typedBRow) < 0) {
+              writer.writeRow(currentARow)
+              currentARow = parserA.parseNext()
+              if (currentARow != null) {
+                typedARow = LongRow(currentARow(keyCol).toLong, Array())
+              } else {
+                compareActive = false
+              }
+            } else {
+              writer.writeRow(currentBRow)
+              currentBRow = parserB.parseNext()
+              if (currentBRow != null) {
+                typedBRow = LongRow(currentBRow(keyCol).toLong, Array())
+              } else {
+                compareActive = false
+              }
+            }
+          }
+        }
+        case Tools.sortKeyType.integerNegKeyType => {
+          var typedARow = LongRow(currentARow(keyCol).toLong, Array())
+          var typedBRow = LongRow(currentBRow(keyCol).toLong, Array())
+          while (compareActive) {
+            if (LongRowOrdering.compare(typedARow, typedBRow) > 0) {
               writer.writeRow(currentARow)
               currentARow = parserA.parseNext()
               if (currentARow != null) {
@@ -512,11 +457,57 @@ object ExtSort {
             }
           }
         }
+        case Tools.sortKeyType.stringNegKeyType => {
+          var typedARow = StringRow(currentARow(keyCol), Array())
+          var typedBRow = StringRow(currentBRow(keyCol), Array())
+          while (compareActive) {
+            if (StringRowOrdering.compare(typedARow, typedBRow) > 0) {
+              writer.writeRow(currentARow)
+              currentARow = parserA.parseNext()
+              if (currentARow != null) {
+                typedARow = StringRow(currentARow(keyCol), Array())
+              } else {
+                compareActive = false
+              }
+            } else {
+              writer.writeRow(currentBRow)
+              currentBRow = parserB.parseNext()
+              if (currentBRow != null) {
+                typedBRow = StringRow(currentBRow(keyCol), Array())
+              } else {
+                compareActive = false
+              }
+            }
+          }
+        }
         case Tools.sortKeyType.decimalKeyType => {
           var typedARow = DoubleRow(currentARow(keyCol).toDouble, Array())
           var typedBRow = DoubleRow(currentBRow(keyCol).toDouble, Array())
           while (compareActive) {
             if (DoubleRowOrdering.compare(typedARow, typedBRow) < 0) {
+              writer.writeRow(currentARow)
+              currentARow = parserA.parseNext()
+              if (currentARow != null) {
+                typedARow = DoubleRow(currentARow(keyCol).toDouble, Array())
+              } else {
+                compareActive = false
+              }
+            } else {
+              writer.writeRow(currentBRow)
+              currentBRow = parserB.parseNext()
+              if (currentBRow != null) {
+                typedBRow = DoubleRow(currentBRow(keyCol).toDouble, Array())
+              } else {
+                compareActive = false
+              }
+            }
+          }
+        }
+        case Tools.sortKeyType.decimalNegKeyType => {
+          var typedARow = DoubleRow(currentARow(keyCol).toDouble, Array())
+          var typedBRow = DoubleRow(currentBRow(keyCol).toDouble, Array())
+          while (compareActive) {
+            if (DoubleRowOrdering.compare(typedARow, typedBRow) > 0) {
               writer.writeRow(currentARow)
               currentARow = parserA.parseNext()
               if (currentARow != null) {
@@ -563,7 +554,7 @@ object ExtSort {
       val (partA, partB) = pairs.splitAt(pairs.length / 2)
       // Every round merges has a unique group-name and then lazyzip unique file-ids
       val uniqueName = callNr * 1000
-      val grouped = partA.lazyZip(partB).lazyZip(0 until partA.length).toList
+      val grouped = partA.lazyZip(partB).lazyZip(partA.indices).toList
       grouped.map(x =>
         Future {
           mergeFiles(

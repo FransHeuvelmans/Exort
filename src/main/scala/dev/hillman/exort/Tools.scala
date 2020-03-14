@@ -62,21 +62,22 @@ object Tools {
     * Alphabetical distance (NO edit distance)
     */
   @scala.annotation.tailrec
-  def StringDistance(a: String, b: String): Double = {
+  private def StringDistance(a: String,
+                     b: String,
+                     prevDistances: List[Int]): List[Int] = {
     if ((a.isEmpty) && (b.isEmpty)) {
-      return 0.0
+      return prevDistances.reverse
     } else if (a.isEmpty) {
-      return b.head.toDouble
+      return (-b.head.toInt :: prevDistances).reverse
     } else if (b.isEmpty) {
-      return -a.head.toDouble
+      return (a.head.toInt :: prevDistances).reverse
     }
-    val diff = b.head - a.head
-    if (diff == 0) {
-      StringDistance(a.tail, b.tail)
-    } else {
-      diff.toDouble
-    }
+    val diff = a.head - b.head
+    StringDistance(a.tail, b.tail, diff :: prevDistances)
   }
+
+  def StringDistanceLowerCase(a: String, b: String): List[Int] =
+    StringDistance(a.toLowerCase, b.toLowerCase, Nil)
 
   def cleanDirectory(location: Path): Unit = {
     // Clean the directory and all files within here

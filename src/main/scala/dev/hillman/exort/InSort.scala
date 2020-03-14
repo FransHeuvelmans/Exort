@@ -1,6 +1,5 @@
 package dev.hillman.exort
 
-
 import scala.reflect._
 import scala.util.Sorting
 
@@ -10,28 +9,40 @@ sealed trait SortableRow {
 case class LongRow(v: Long, content: Array[String]) extends SortableRow {
   def getContent: Array[String] = this.content
 }
-case class DoubleRow(v: Double, content: Array[String]) extends SortableRow  {
+case class DoubleRow(v: Double, content: Array[String]) extends SortableRow {
   def getContent: Array[String] = this.content
 }
 case class StringRow(v: String, content: Array[String]) extends SortableRow {
   def getContent: Array[String] = this.content
 }
 case class VaryRow(v1: List[String],
+                   v2: List[Double],
+                   v3: List[Int],
+                   vs: List[Tools.sortKeyType.sortKeyType],
+                   content: Array[String])
+    extends SortableRow {
+  def getContent: Array[String] = this.content
+}
+case class VaryRowComplex(v1: List[String],
                    v2: List[BigDecimal],
                    v3: List[BigInt],
-                   vs:List[Tools.sortKeyType.sortKeyType],
-                   content: Array[String]) extends SortableRow {
+                   vs: List[Tools.sortKeyType.sortKeyType],
+                   content: Array[String])
+  extends SortableRow {
   def getContent: Array[String] = this.content
 }
 
 object LongRowOrdering extends Ordering[LongRow] {
-  override def compare(x: LongRow, y: LongRow): Int = Ordering.Long.compare(x.v, y.v)
+  override def compare(x: LongRow, y: LongRow): Int =
+    Ordering.Long.compare(x.v, y.v)
 }
 object DoubleRowOrdering extends Ordering[DoubleRow] {
-  override def compare(x: DoubleRow, y: DoubleRow): Int = Ordering.Double.IeeeOrdering.compare(x.v, y.v)
+  override def compare(x: DoubleRow, y: DoubleRow): Int =
+    Ordering.Double.IeeeOrdering.compare(x.v, y.v)
 }
 object StringRowOrdering extends Ordering[StringRow] {
-  override def compare(x: StringRow, y: StringRow): Int = Ordering.String.compare(x.v, y.v)
+  override def compare(x: StringRow, y: StringRow): Int =
+    Ordering.String.compare(x.v, y.v)
 }
 object VaryRowOrdering extends Ordering[VaryRow] {
   @scala.annotation.tailrec
@@ -93,60 +104,48 @@ object VaryRowOrdering extends Ordering[VaryRow] {
   }
 
   @scala.annotation.tailrec
-  def distance(x: VaryRow, y: VaryRow): Double = x.vs.head match {
-    case Tools.sortKeyType.stringKeyType => {
-      val cmp = Tools.StringDistance(x.v1.head, y.v1.head)
-      if (cmp != 0.0) {
-        return cmp
-      }
-      val newThis = VaryRow(x.v1.tail, x.v2, x.v3, x.vs.tail, x.content)
-      val newThat = VaryRow(y.v1.tail, y.v2, y.v3, y.vs.tail, y.content)
-      VaryRowOrdering.distance(newThis, newThat)
+  def distance(x: VaryRow, y: VaryRow, prevDistance: List[Double]): List[Double] = {
+    if(x.vs.isEmpty) {
+      return prevDistance.reverse
     }
-    case Tools.sortKeyType.stringNegKeyType => {
-      val cmp = -Tools.StringDistance(x.v1.head, y.v1.head)
-      if (cmp != 0.0) {
-        return cmp
+    x.vs.head match {
+      case Tools.sortKeyType.stringKeyType => {
+        val cmp = Tools.StringDistanceLowerCase(x.v1.head, y.v1.head)
+        val newThis = VaryRow(x.v1.tail, x.v2, x.v3, x.vs.tail, x.content)
+        val newThat = VaryRow(y.v1.tail, y.v2, y.v3, y.vs.tail, y.content)
+        VaryRowOrdering.distance(newThis, newThat, cmp.map(_.toDouble) ::: prevDistance)
       }
-      val newThis = VaryRow(x.v1.tail, x.v2, x.v3, x.vs.tail, x.content)
-      val newThat = VaryRow(y.v1.tail, y.v2, y.v3, y.vs.tail, y.content)
-      VaryRowOrdering.distance(newThis, newThat)
-    }
-    case Tools.sortKeyType.decimalKeyType => {
-      val cmp = y.v2.head - x.v2.head
-      if (cmp.abs > 0.001) {
-        return cmp.toDouble  // TODO: Can go horribly wrong
+      case Tools.sortKeyType.stringNegKeyType => {
+        val cmp = Tools.StringDistanceLowerCase(x.v1.head, y.v1.head).map(-_)
+        val newThis = VaryRow(x.v1.tail, x.v2, x.v3, x.vs.tail, x.content)
+        val newThat = VaryRow(y.v1.tail, y.v2, y.v3, y.vs.tail, y.content)
+        VaryRowOrdering.distance(newThis, newThat, cmp.map(_.toDouble) ::: prevDistance)
       }
-      val newThis = VaryRow(x.v1, x.v2.tail, x.v3, x.vs.tail, x.content)
-      val newThat = VaryRow(y.v1, y.v2.tail, y.v3, y.vs.tail, y.content)
-      VaryRowOrdering.distance(newThis, newThat)
-    }
-    case Tools.sortKeyType.decimalNegKeyType => {
-      val cmp = -(y.v2.head - x.v2.head)
-      if (cmp.abs > 0.001) {
-        return cmp.toDouble  // TODO: Can go horribly wrong
+      case Tools.sortKeyType.decimalKeyType => {
+        val cmp = x.v2.head - y.v2.head
+        val newThis = VaryRow(x.v1, x.v2.tail, x.v3, x.vs.tail, x.content)
+        val newThat = VaryRow(y.v1, y.v2.tail, y.v3, y.vs.tail, y.content)
+        VaryRowOrdering.distance(newThis, newThat, cmp :: prevDistance)
       }
-      val newThis = VaryRow(x.v1, x.v2.tail, x.v3, x.vs.tail, x.content)
-      val newThat = VaryRow(y.v1, y.v2.tail, y.v3, y.vs.tail, y.content)
-      VaryRowOrdering.distance(newThis, newThat)
-    }
-    case Tools.sortKeyType.integerKeyType => {
-      val cmp = y.v3.head - x.v3.head
-      if (cmp != 0) {
-        return cmp.toDouble  // TODO: Can go horribly wrong
+      case Tools.sortKeyType.decimalNegKeyType => {
+        val cmp = -(x.v2.head - y.v2.head)
+        val newThis = VaryRow(x.v1, x.v2.tail, x.v3, x.vs.tail, x.content)
+        val newThat = VaryRow(y.v1, y.v2.tail, y.v3, y.vs.tail, y.content)
+        VaryRowOrdering.distance(newThis, newThat, cmp :: prevDistance)
       }
-      val newThis = VaryRow(x.v1, x.v2, x.v3.tail, x.vs.tail, x.content)
-      val newThat = VaryRow(y.v1, y.v2, y.v3.tail, y.vs.tail, y.content)
-      VaryRowOrdering.distance(newThis, newThat)
-    }
-    case Tools.sortKeyType.integerNegKeyType => {
-      val cmp = -(y.v3.head - x.v3.head)
-      if (cmp != 0) {
-        return cmp.toDouble  // TODO: Can go horribly wrong
+      case Tools.sortKeyType.integerKeyType => {
+        val cmp = x.v3.head - y.v3.head
+        val newThis = VaryRow(x.v1, x.v2, x.v3.tail, x.vs.tail, x.content)
+        val newThat = VaryRow(y.v1, y.v2, y.v3.tail, y.vs.tail, y.content)
+        VaryRowOrdering.distance(newThis, newThat, cmp.toDouble :: prevDistance)
       }
-      val newThis = VaryRow(x.v1, x.v2, x.v3.tail, x.vs.tail, x.content)
-      val newThat = VaryRow(y.v1, y.v2, y.v3.tail, y.vs.tail, y.content)
-      VaryRowOrdering.distance(newThis, newThat)
+      case Tools.sortKeyType.integerNegKeyType => {
+        val cmp = -(x.v3.head - y.v3.head)
+        val newThis = VaryRow(x.v1, x.v2, x.v3.tail, x.vs.tail, x.content)
+        val newThat = VaryRow(y.v1, y.v2, y.v3.tail, y.vs.tail, y.content)
+        VaryRowOrdering.distance(newThis, newThat, cmp.toDouble :: prevDistance)
+      }
+      case _ => prevDistance.reverse
     }
   }
 }
@@ -158,7 +157,8 @@ object InSort {
   implicit val stringRowOrdering = StringRowOrdering
   implicit val varyRowOrdering = VaryRowOrdering
 
-  def sortLongRow(dataset: List[LongRow], reverse: Boolean = false): Array[LongRow] = {
+  def sortLongRow(dataset: List[LongRow],
+                  reverse: Boolean = false): Array[LongRow] = {
     val ctag = classTag[LongRow]
     if (reverse) {
       Sorting.stableSort(dataset)(ctag, LongRowOrdering.reverse)
@@ -167,7 +167,8 @@ object InSort {
     }
   }
 
-  def sortDoubleRow(dataset: List[DoubleRow], reverse: Boolean = false): Array[DoubleRow] = {
+  def sortDoubleRow(dataset: List[DoubleRow],
+                    reverse: Boolean = false): Array[DoubleRow] = {
     val ctag = classTag[DoubleRow]
     if (reverse) {
       Sorting.stableSort(dataset)(ctag, DoubleRowOrdering.reverse)
@@ -176,7 +177,8 @@ object InSort {
     }
   }
 
-  def sortStringRow(dataset: List[StringRow], reverse: Boolean = false):  Array[StringRow] = {
+  def sortStringRow(dataset: List[StringRow],
+                    reverse: Boolean = false): Array[StringRow] = {
     val ctag = classTag[StringRow]
     if (reverse) {
       Sorting.stableSort(dataset)(ctag, StringRowOrdering.reverse)
