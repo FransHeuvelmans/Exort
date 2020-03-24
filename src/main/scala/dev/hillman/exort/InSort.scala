@@ -17,7 +17,7 @@ case class StringRow(v: String, content: Array[String]) extends SortableRow {
 }
 case class VaryRow(v1: List[String],
                    v2: List[Double],
-                   v3: List[Int],
+                   v3: List[Long],
                    vs: List[Tools.sortKeyType.sortKeyType],
                    content: Array[String])
     extends SortableRow {
@@ -38,7 +38,7 @@ object LongRowOrdering extends Ordering[LongRow] {
 }
 object DoubleRowOrdering extends Ordering[DoubleRow] {
   override def compare(x: DoubleRow, y: DoubleRow): Int =
-    Ordering.Double.IeeeOrdering.compare(x.v, y.v)
+    Ordering.Double.TotalOrdering.compare(x.v, y.v)
 }
 object StringRowOrdering extends Ordering[StringRow] {
   override def compare(x: StringRow, y: StringRow): Int =
@@ -66,7 +66,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       VaryRowOrdering.compare(newThis, newThat)
     }
     case Tools.sortKeyType.decimalKeyType => {
-      val cmp = Ordering.BigDecimal.compare(x.v2.head, y.v2.head)
+      val cmp = Ordering.Double.TotalOrdering.compare(x.v2.head, y.v2.head)
       if (cmp != 0) {
         return cmp
       }
@@ -75,7 +75,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       VaryRowOrdering.compare(newThis, newThat)
     }
     case Tools.sortKeyType.decimalNegKeyType => {
-      val cmp = -Ordering.BigDecimal.compare(x.v2.head, y.v2.head)
+      val cmp = -Ordering.Double.TotalOrdering.compare(x.v2.head, y.v2.head)
       if (cmp != 0) {
         return cmp
       }
@@ -84,7 +84,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       VaryRowOrdering.compare(newThis, newThat)
     }
     case Tools.sortKeyType.integerKeyType => {
-      val cmp = Ordering.BigInt.compare(x.v3.head, y.v3.head)
+      val cmp = Ordering.Long.compare(x.v3.head, y.v3.head)
       if (cmp != 0) {
         return cmp
       }
@@ -93,7 +93,7 @@ object VaryRowOrdering extends Ordering[VaryRow] {
       VaryRowOrdering.compare(newThis, newThat)
     }
     case Tools.sortKeyType.integerNegKeyType => {
-      val cmp = -Ordering.BigInt.compare(x.v3.head, y.v3.head)
+      val cmp = -Ordering.Long.compare(x.v3.head, y.v3.head)
       if (cmp != 0) {
         return cmp
       }

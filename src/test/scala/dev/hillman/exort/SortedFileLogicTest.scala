@@ -37,26 +37,26 @@ class SortedFileLogicTest extends FlatSpec {
   "lists of separated VaryFiles" should "be completely mergable" in {
     val sortRules = Tools.sortKeyType.stringKeyType :: Tools.sortKeyType.integerKeyType :: Nil
     val testOriginalFiles = List(
-      VarySortedFile(VaryRow("a" :: Nil, Nil, 2 :: Nil, sortRules, null),
-                     VaryRow("a" :: Nil, Nil, 5 :: Nil, sortRules, null),
+      VarySortedFile(VaryRow("a" :: Nil, Nil, 2L :: Nil, sortRules, null),
+                     VaryRow("a" :: Nil, Nil, 5L :: Nil, sortRules, null),
                      null),
-      VarySortedFile(VaryRow("a" :: Nil, Nil, 6 :: Nil, sortRules, null),
-                     VaryRow("a" :: Nil, Nil, 20 :: Nil, sortRules, null),
+      VarySortedFile(VaryRow("a" :: Nil, Nil, 6L :: Nil, sortRules, null),
+                     VaryRow("a" :: Nil, Nil, 20L :: Nil, sortRules, null),
                      null),
-      VarySortedFile(VaryRow("b" :: Nil, Nil, -8 :: Nil, sortRules, null),
-                     VaryRow("c" :: Nil, Nil, 15 :: Nil, sortRules, null),
+      VarySortedFile(VaryRow("b" :: Nil, Nil, -8L :: Nil, sortRules, null),
+                     VaryRow("c" :: Nil, Nil, 15L :: Nil, sortRules, null),
                      null),
-      VarySortedFile(VaryRow("d" :: Nil, Nil, -8 :: Nil, sortRules, null),
-                     VaryRow("e" :: Nil, Nil, 15 :: Nil, sortRules, null),
+      VarySortedFile(VaryRow("d" :: Nil, Nil, -8L :: Nil, sortRules, null),
+                     VaryRow("e" :: Nil, Nil, 15L :: Nil, sortRules, null),
                      null),
-      VarySortedFile(VaryRow("e" :: Nil, Nil, 20 :: Nil, sortRules, null),
-                     VaryRow("f" :: Nil, Nil, -100 :: Nil, sortRules, null),
+      VarySortedFile(VaryRow("e" :: Nil, Nil, 20L :: Nil, sortRules, null),
+                     VaryRow("f" :: Nil, Nil, -100L :: Nil, sortRules, null),
                      null)
     )
     val testFiles: List[TempSortedFile] = testOriginalFiles
     val compareFile =
-      VarySortedFile(VaryRow("a" :: Nil, Nil, -2000 :: Nil, sortRules, null),
-                     VaryRow("a" :: Nil, Nil, -100 :: Nil, sortRules, null),
+      VarySortedFile(VaryRow("a" :: Nil, Nil, -2000L :: Nil, sortRules, null),
+                     VaryRow("a" :: Nil, Nil, -100L :: Nil, sortRules, null),
                      null)
     val normalResults = testFiles.map(compareFile.distance(_))
     normalResults.foreach(r => assert(FileSort.lt(r, Nil)))

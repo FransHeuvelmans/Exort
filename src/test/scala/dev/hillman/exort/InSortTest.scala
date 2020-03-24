@@ -119,24 +119,24 @@ class InSortTest extends FlatSpec with Matchers {
       LongRow(42, Array("one", "two", "three", "42"))
     )
     val out = InSort.sortLongRow(unsorted, reverse = true)
-    val answers = 1000 :: 946 :: 42 :: 0 :: -30 :: Nil
+    val answers = 1000L :: 946L :: 42L :: 0L :: -30L :: Nil
     out.zip(answers).foreach(rowans => assert(rowans._1.v === rowans._2))
   }
 
   "unsorted VaryRow table with ascending and descending columns" should "be sortable" in {
     val sortOrder = Tools.sortKeyType.stringKeyType :: Tools.sortKeyType.integerNegKeyType :: Nil
     val unsorted = List(
-      VaryRow("c" :: Nil, Nil, 1 :: Nil, sortOrder, Array("1", "c")),
-      VaryRow("c" :: Nil, Nil, 2 :: Nil, sortOrder, Array("2", "c")),
-      VaryRow("b" :: Nil, Nil, 3 :: Nil, sortOrder, Array("3", "b")),
-      VaryRow("b" :: Nil, Nil, 4 :: Nil, sortOrder, Array("4", "b")),
-      VaryRow("a" :: Nil, Nil, 5 :: Nil, sortOrder, Array("5", "a")),
-      VaryRow("a" :: Nil, Nil, 6 :: Nil, sortOrder, Array("6", "a"))
+      VaryRow("c" :: Nil, Nil, 1L :: Nil, sortOrder, Array("1", "c")),
+      VaryRow("c" :: Nil, Nil, 2L :: Nil, sortOrder, Array("2", "c")),
+      VaryRow("b" :: Nil, Nil, 3L :: Nil, sortOrder, Array("3", "b")),
+      VaryRow("b" :: Nil, Nil, 4L :: Nil, sortOrder, Array("4", "b")),
+      VaryRow("a" :: Nil, Nil, 5L :: Nil, sortOrder, Array("5", "a")),
+      VaryRow("a" :: Nil, Nil, 6L :: Nil, sortOrder, Array("6", "a"))
     )
     val out = InSort.sortVaryRow(unsorted)
     assert(out(0).content(1) === "a")
     assert(out(5).content(1) === "c")
-    val intAnswers = 6 to 1 by -1
-    out.zip(intAnswers).foreach(rowAns => assert(rowAns._1.content(0) === rowAns._2.toString))
+    val longAnswers = 6L to 1L by -1
+    out.zip(longAnswers).foreach(rowAns => assert(rowAns._1.content(0) === rowAns._2.toString))
   }
 }

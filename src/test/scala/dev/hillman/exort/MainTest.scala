@@ -3,14 +3,14 @@ package dev.hillman.exort
 import org.scalatest._
 
 class MainTest extends FlatSpec with Matchers {
-  "no extra argument options" should "give default settings" in {
+  ignore should "give default settings" in {
     val testFileLoc = "testbig.csv"
     val simpleInvocation = Array(testFileLoc)
     val options = Main.parseArgs(simpleInvocation).toOption.get
     options.file.getName === testFileLoc
   }
 
-  "single extra argument to options" should "change the default option" in {
+  ignore should "change the default option" in {
     val testFileLoc = "testbig.csv"
     val invocation1 = Array("--rows", "42", testFileLoc)
     val options1 = Main.parseArgs(invocation1).toOption.get
@@ -28,7 +28,7 @@ class MainTest extends FlatSpec with Matchers {
     options1.rowSplit === 42000000
   }
 
-  "multiple extra options " should "change all the options" in {
+  ignore should "change all the options" in {
     val testFileLoc = "testbig.csv"
     val invocation = Array("--rows", "64", "--sep", "&", testFileLoc)
     val options = Main.parseArgs(invocation).toOption.get
@@ -37,7 +37,7 @@ class MainTest extends FlatSpec with Matchers {
     options.rowSplit === 64
   }
 
-  "many key and type options" should "be loaded into the config" in {
+  ignore should "be loaded into the config" in {
     val testFileLoc = "testbig.csv"
     val invocation = Array("--key", "6,2", "--keyVal", "-d,s", testFileLoc)
     val options = Main.parseArgs(invocation).toOption.get

@@ -1,11 +1,11 @@
 package dev.hillman.exort
 import dev.hillman.exort.Tools.sortKeyType
 import java.io.File
-import java.nio.file.{Path, Paths}
+import java.nio.file.Paths
 
-import org.scalatest.{BeforeAndAfter, FlatSpec, FunSpec, Matchers}
+import org.scalatest.{BeforeAndAfter, FlatSpec}
 
-class ExtSortIntTest extends FlatSpec with Matchers with BeforeAndAfter {
+class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
 
   def testFile(fileToCheck: File, answers: List[Int], keyLoc: Int): Unit = {
     val parser = Tools.tsvParser(false)

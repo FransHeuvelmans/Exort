@@ -22,6 +22,12 @@ object Tools {
     stringKeyType, stringNegKeyType = Value
   }
 
+  /**
+   * Create a new csv parser
+   * @param sep the separator character
+   * @param hasHeader Is there a header which should be skipped
+   * @return new parser object
+   */
   def csvParser(sep: Char, hasHeader: Boolean): CsvParser = {
     val settings = new CsvParserSettings()
     val fmt = settings.getFormat()
@@ -31,6 +37,11 @@ object Tools {
     new CsvParser(settings)
   }
 
+  /**
+   * Create a new Tsv-parser
+   * @param hasHeader Is there a header which should be skipped
+   * @return new parser object
+   */
   def tsvParser(hasHeader: Boolean): TsvParser = {
     val settings = new TsvParserSettings()
     settings.getFormat.setLineSeparator("\n")
@@ -38,6 +49,10 @@ object Tools {
     new TsvParser(settings)
   }
 
+  /**
+   * Create a directory in temp for storing the data  for intermediate steps
+   * @return Path to the temporary directory
+   */
   def createTempDir(): Path = {
     val tempPrefix = "exsort_" + Random.alphanumeric
       .take(10)
@@ -45,12 +60,27 @@ object Tools {
     Files.createTempDirectory(tempPrefix)
   }
 
+  /**
+   * Create a new (temp) File with name based on a number
+   * @param location Path to the new file's location
+   * @param nr number used for the name of the file
+   * @return new File object
+   */
   def tempOutputFile(location: Path, nr: Int = 0): File =
     new File(location.toFile, s"p${nr}.tsv")
 
+  def endOutputFile(oldFile: File): File = {
+    val outFileNameParts = oldFile.getName.split('.')
+    val baseName = outFileNameParts.slice(0, outFileNameParts.length - 1).mkString("_")
+    new File(baseName + "_sorted.tsv")
+  }
+
+  /**
+   * Write a list of rows to a tsv-file
+   */
   def writeToFile(data: Iterable[SortableRow],
                   fileLoc: File,
-                  settings: ExortSetting) = {
+                  settings: ExortSetting): Unit = {
     val writer = new TsvWriter(fileLoc, new TsvWriterSettings)
     val outArray: Iterable[Array[String]] =
       data.map((x: SortableRow) => x.getContent)
@@ -76,17 +106,30 @@ object Tools {
     StringDistance(a.tail, b.tail, diff :: prevDistances)
   }
 
+  /**
+   * Alphabetical distance with case equality
+   */
   def StringDistanceLowerCase(a: String, b: String): List[Int] =
     StringDistance(a.toLowerCase, b.toLowerCase, Nil)
 
+  /**
+   * Delete all files at a location
+   * @param location the path to this location
+   */
   def cleanDirectory(location: Path): Unit = {
     // Clean the directory and all files within here
     println(s"Deleting files at $location")
     val filePathList = Files.list(location).toScala(Seq)
-    println(filePathList)
     filePathList.map((x: Path) => x.toFile.delete())
   }
 
+  /**
+   * Create a new VaryRow based based on a string-array and the settings
+   * @param inSource raw separated column data
+   * @param setting settings for interpreting the file
+   * @param addSource Store the original string array in the object
+   * @return a new VaryRow object
+   */
   def convertToVaryRow(inSource: Array[String],
                        setting: ExortSetting,
                        addSource: Boolean = true): VaryRow = {
@@ -96,14 +139,14 @@ object Tools {
       tempSetting.keyType match {
         case sortKeyType.integerKeyType :: tail => {
           val newRow = outRow.copy(
-            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toInt)
+            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toLong)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
         }
         case sortKeyType.integerNegKeyType :: tail => {
           val newRow = outRow.copy(
-            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toInt)
+            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toLong)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
@@ -151,5 +194,4 @@ object Tools {
     createRow(setting, emptyRow)
   }
 
-  // Todo -> create a VaryTypeFile from a list of VeryTypeRows...
 }

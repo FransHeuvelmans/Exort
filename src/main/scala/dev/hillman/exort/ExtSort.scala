@@ -179,8 +179,8 @@ object ExtSort {
           val outFile = Tools.tempOutputFile(rootLocation, iterFile)
           Tools.writeToFile(currentFixedSet.toList, outFile, settings)
           // Different SortedFile classes would be better but even better is make everything String/Long agnostic
-          sortedFiles = exort.VarySortedFile(currentDataSet.head,
-                                             currentDataSet.last,
+          sortedFiles = exort.VarySortedFile(currentFixedSet.head,
+                                             currentFixedSet.last,
                                              outFile) :: sortedFiles
           currentDataSet = Nil
           iterFile += 1
@@ -284,6 +284,7 @@ object ExtSort {
     @scala.annotation.tailrec
     def alreadySortedCheck(checked: List[File],
                            toCheck: List[TempSortedFile]): List[File] = {
+      // TODO: Make sure that reverse is passed along if set
       implicit val implicitOrdering = Ordering.Double.IeeeOrdering
       toCheck match {
         case Nil        => checked
@@ -304,28 +305,25 @@ object ExtSort {
               negCombination,
               tsMore(afterDistances.head._2),
               rootLocation)
-            val poppedList = toCheck diff List(
-              tsA,
-              tsMore(beforeDistances.last._2),
-              tsMore(afterDistances.head._2))
+            val poppedList = toCheck diff List(tsA,
+                                               tsMore(beforeDistances.last._2),
+                                               tsMore(afterDistances.head._2))
             alreadySortedCheck(checked, newNegPosCombination :: poppedList)
           } else if (beforeDistances.nonEmpty) {
             val newCombination = concatSortedFiles(
               tsMore(beforeDistances.last._2),
               tsA,
               rootLocation)
-            val poppedList = toCheck diff List(
-              tsA,
-              tsMore(beforeDistances.last._2))
+            val poppedList = toCheck diff List(tsA,
+                                               tsMore(beforeDistances.last._2))
             alreadySortedCheck(checked, newCombination :: poppedList)
           } else if (afterDistances.nonEmpty) {
             val newCombination = concatSortedFiles(
               tsA,
               tsMore(afterDistances.head._2),
               rootLocation)
-            val poppedList = toCheck diff List(
-              tsA,
-              tsMore(afterDistances.head._2))
+            val poppedList = toCheck diff List(tsA,
+                                               tsMore(afterDistances.head._2))
             alreadySortedCheck(checked, newCombination :: poppedList)
           } else {
             alreadySortedCheck(tsA.file :: checked, tsMore)
@@ -584,17 +582,22 @@ object ExtSort {
     processWorkFile(workFiles)
   }
 
-  def runExternalSort(setting: ExortSetting) = {
+  /**
+    * Does the complete external sorting according to the settings
+    */
+  def runExternalSort(setting: ExortSetting): Unit = {
     println("Starting external sort")
     val tempDir = Tools.createTempDir()
     val sortedParts = sortParts(tempDir, setting)
     println(s"Sorted parts: ${sortedParts.length}")
     val mergeList = mergeAccidentalSorted(sortedParts, tempDir)
-    println(s"Simply merged parts ${mergeList}")
+    println(s"Merged parts (compare-less): ${mergeList.length}")
     val processedFile = externalMergeSort(mergeList, tempDir, setting)
     println("Sorting done")
-    Files.move(processedFile.toPath(),
-               (new File("output.csv")).toPath,
+
+    val newOutFile = Tools.endOutputFile(setting.file)
+    Files.move(processedFile.toPath,
+               newOutFile.toPath,
                StandardCopyOption.REPLACE_EXISTING)
     Tools.cleanDirectory(tempDir)
   }

@@ -14,7 +14,7 @@ sealed trait TempSortedFile {
 
 case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
     extends TempSortedFile {
-  require(vlow < vhigh)
+  require(vlow <= vhigh)
   override def distance(other: TempSortedFile,
                         reverse: Boolean = false): List[Double] = {
     val dis = other match {
@@ -39,7 +39,7 @@ case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
 
 case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
     extends TempSortedFile {
-  require(vlow < vhigh)
+  require(vlow <= vhigh)
   override def distance(other: TempSortedFile,
                         reverse: Boolean = false): List[Double] = {
     val dis = other match {

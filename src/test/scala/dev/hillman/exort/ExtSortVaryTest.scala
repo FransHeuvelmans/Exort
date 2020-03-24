@@ -4,9 +4,9 @@ import java.io.File
 import java.nio.file.Paths
 
 import dev.hillman.exort.Tools.sortKeyType
-import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
+import org.scalatest.FlatSpec
 
-class ExtSortVaryTest extends FlatSpec with Matchers {
+class ExtSortVaryTest extends FlatSpec {
 
   def testFile(fileToCheck: File, answers: List[(Int, String)], keyLoc: (Int, Int)): Unit = {
     val parser = Tools.tsvParser(false)
