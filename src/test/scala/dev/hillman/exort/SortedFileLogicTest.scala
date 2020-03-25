@@ -64,13 +64,13 @@ class SortedFileLogicTest extends FlatSpec {
     val reverseSortRules = Tools.sortKeyType.stringNegKeyType :: Tools.sortKeyType.integerNegKeyType :: Nil
 
     val reverseCompareFile =
-      VarySortedFile(compareFile.vlow.copy(vs = reverseSortRules),
-                     compareFile.vhigh.copy(vs = reverseSortRules),
+      VarySortedFile(compareFile.vstart.copy(vs = reverseSortRules),
+                     compareFile.vend.copy(vs = reverseSortRules),
                      compareFile.file)
     val reverseFiles = testOriginalFiles.map(
       tf =>
-        VarySortedFile(tf.vlow.copy(vs = reverseSortRules),
-                       tf.vhigh.copy(vs = reverseSortRules),
+        VarySortedFile(tf.vstart.copy(vs = reverseSortRules),
+                       tf.vend.copy(vs = reverseSortRules),
                        tf.file))
     val reverseResults = reverseFiles.map(reverseCompareFile.distance(_))
     reverseResults.foreach(r => assert(FileSort.gt(r, Nil)))

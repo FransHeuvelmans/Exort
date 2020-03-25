@@ -33,22 +33,30 @@ class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
   before {
     outFiles = ExtSort.sortParts(testDirectory, settings)
   }
+  after {
+    outFiles.foreach(_.file.delete())
+  }
 
   "A non-sorted input csv" should "be sortable in parts" in {
     testFile(outFiles(0).file, p0Vals, settings.keyNr.head)
     testFile(outFiles(1).file, p1Vals, settings.keyNr.head)
+    val longFiles = outFiles.map(_.asInstanceOf[LongSortedFile])
+    assert(longFiles.head.vlow === 7)
+    assert(longFiles.head.vhigh === 13)
+    assert(longFiles.tail.head.vlow === 78)
+    assert(longFiles.tail.head.vhigh === 110)
   }
 
   it should "Should be mergeable if the parts do not overlap" in {
     val o = ExtSort.mergeAccidentalSorted(outFiles, testDirectory)
-    testFile(o(0), p0Vals ++ p1Vals, settings.keyNr(0))
-    o(0).delete()
+    testFile(o.head, p0Vals ++ p1Vals, settings.keyNr.head)
+    o.head.delete()
   }
 
   it should "Be mergeable by joining the parts together" in {
     val f =
       ExtSort.externalMergeSort(outFiles.map(_.file), testDirectory, settings)
-    testFile(f, p0Vals ++ p1Vals, settings.keyNr(0))
+    testFile(f, p0Vals ++ p1Vals, settings.keyNr.head)
     f.delete()
   }
 
@@ -59,14 +67,14 @@ class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
     keyNr = 1 :: Nil)
 
   "A non-sorted inputfile" should "be reverse-sortable" in {
-    val outFilesReverse = ExtSort.sortParts(testDirectory, reverseSettings)
+    val outFilesReverse = ExtSort.sortParts(testDirectory, reverseSettings).map(_.asInstanceOf[LongSortedFile])
     testFile(outFilesReverse(0).file, p0Vals.reverse, settings.keyNr.head)
     testFile(outFilesReverse(1).file, p1Vals.reverse, settings.keyNr.head)
+    assert(outFilesReverse.head.vlow === 7)
+    assert(outFilesReverse.head.vhigh === 13)
+    assert(outFilesReverse.tail.head.vlow === 78)
+    assert(outFilesReverse.tail.head.vhigh === 110)
     outFilesReverse.foreach(_.file.delete())
-  }
-
-  after {
-    outFiles.foreach(_.file.delete())
   }
 
 }

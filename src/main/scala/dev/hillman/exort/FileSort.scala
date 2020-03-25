@@ -89,20 +89,21 @@ case class StringSortedFile(vlow: String, vhigh: String, file: File)
   }
 }
 
-case class VarySortedFile(vlow: VaryRow, vhigh: VaryRow, file: File)
+/* Note because VaryRow only has one ordering (with many possible suborderings)
+ * only the start and end of a ordered file are tracked (not whether they are
+ * big or small) */
+case class VarySortedFile(vstart: VaryRow, vend: VaryRow, file: File)
     extends TempSortedFile {
-
-  // require(VaryRowOrdering.lt(vlow, vhigh))  Need to check ordering only because VaryRows have build-in reverse
 
   override def distance(other: TempSortedFile,
                         reverse: Boolean = false): List[Double] = {
     require(!reverse) // Should use special ordering types for varyrows
     other match {
       case o: VarySortedFile => {
-        if (VaryRowOrdering.gt(this.vlow, o.vhigh)) {
-          VaryRowOrdering.distance(this.vlow, o.vhigh, Nil)
-        } else if (VaryRowOrdering.lt(this.vhigh, o.vlow)) {
-          VaryRowOrdering.distance(this.vhigh, o.vlow, Nil)
+        if (VaryRowOrdering.gt(this.vstart, o.vend)) {
+          VaryRowOrdering.distance(this.vstart, o.vend, Nil)
+        } else if (VaryRowOrdering.lt(this.vend, o.vstart)) {
+          VaryRowOrdering.distance(this.vend, o.vstart, Nil)
         } else {
           0.0 :: Nil
         }

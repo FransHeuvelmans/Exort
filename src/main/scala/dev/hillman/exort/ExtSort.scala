@@ -270,7 +270,7 @@ object ExtSort {
       }
       case a: VarySortedFile => {
         val b = fileB.asInstanceOf[VarySortedFile]
-        VarySortedFile(a.vlow, b.vhigh, outFile)
+        VarySortedFile(a.vstart, b.vend, outFile)
       }
     }
   }
