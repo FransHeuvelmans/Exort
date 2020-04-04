@@ -12,27 +12,28 @@ case class ExortSetting(file: File,
                         keyNr: List[Int] = 0 :: Nil,
                         complexSort: Boolean = false,
                         unixPrepare: Boolean = false,
-                        skipHeader: Boolean = false)
+                        skipHeader: Boolean = false,
+                        outFileName: String)
 
 object Main {
 
   /**
-   * Simply copy the key value to the first location in the csv-file
-   * (easy for use with unix sort which might have problems with keys
-   * in combination with difficult quoted columns)
-   */
+    * Simply copy the key value to the first location in the csv-file
+    * (easy for use with unix sort which might have problems with keys
+    * in combination with difficult quoted columns)
+    */
   def unixSortPrepare(settings: ExortSetting) = {
-    val outFile = new File("unix_sort_rdy.tsv")
+    val outFile = new File(settings.outFileName)
     val writer = new TsvWriter(outFile, new TsvWriterSettings)
 
     val parser = settings.sep match {
       case '\t' => Tools.tsvParser(settings.skipHeader)
-      case _ => Tools.csvParser(settings.sep, settings.skipHeader)
+      case _    => Tools.csvParser(settings.sep, settings.skipHeader)
     }
 
     def unixReadyLine(line: Array[String]) = {
-      val keyElem = line(settings.keyNr(0))
-      val newLine = Array(keyElem) ++ line
+      val keyElems = settings.keyNr.map(line(_))
+      val newLine = keyElems ++ line
       writer.writeRow(newLine: _*)
     }
 
@@ -42,8 +43,8 @@ object Main {
   }
 
   /**
-   * Print the help instructions on how to use this program
-   */
+    * Print the help instructions on how to use this program
+    */
   def printHelp() = {
     val bighelp =
       """Sort CSV files larger than memory
@@ -53,21 +54,22 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
   }
 
   /**
-   * A method to read the commandline arguments
-   *
-   * @param args
-   * @return
-   */
+    * A method to read the commandline arguments
+    *
+    * @param args
+    * @return
+    */
   def parseArgs(args: Array[String]): Either[String, ExortSetting] = {
     val fileLoc = args(args.length - 1)
     val file = new File(fileLoc)
     if (!file.exists) {
       return Left(s"File must already exist, tried file ${file.getName}")
     }
-    val defaultOption = ExortSetting(new File(fileLoc))
+    val defaultOption = ExortSetting(file, outFileName = Tools.endOutputFileName(file.getName))
 
     // @scala.annotation.tailrec  // WORKS in 2.12.9 but doesn't in 2.13.0/1 (and intellij marks it as tail-recursive)
-    def readArguments(arguments: List[String], options: ExortSetting): Either[String, ExortSetting] = {
+    def readArguments(arguments: List[String],
+                      options: ExortSetting): Either[String, ExortSetting] = {
       arguments match {
         case "--rows" :: rws :: tail => {
           val rows = {
@@ -75,26 +77,29 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
               try {
                 rws.toLowerCase.replace("k", "").toInt * 1000
               } catch {
-                case _: Throwable => return Left("Could not read k row number")  // Dirty solution for now
+                case _: Throwable =>
+                  return Left("Could not read k row number") // Dirty solution for now
               }
             } else if (rws.toLowerCase.contains("m")) {
               try {
                 rws.toLowerCase.replace("m", "").toInt * 1000000
               } catch {
-                case _: Throwable => return Left("Could not read k row number")  // Dirty solution for now
+                case _: Throwable =>
+                  return Left("Could not read k row number") // Dirty solution for now
               }
             } else {
               try {
                 rws.toInt
               } catch {
-                case _: Throwable => return Left("Could not read row number")  // Dirty solution for now
+                case _: Throwable =>
+                  return Left("Could not read row number") // Dirty solution for now
               }
             }
           }
           if (rows < 0) {
             Left("Row value must be positive")
           } else {
-            return readArguments(tail, options.copy(rowSplit = rows))
+            readArguments(tail, options.copy(rowSplit = rows))
           }
         }
         case "--sep" :: sepr :: tail => {
@@ -110,41 +115,50 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
           if (invalidKeys.length < 0) {
             Left("Key value must be positive")
           } else {
-            return readArguments(tail, options.copy(keyNr = keyNumbers.toList))
+            readArguments(tail, options.copy(keyNr = keyNumbers.toList))
           }
         }
         case "--keyVal" :: kv :: tail => {
-          val ktypes: List[sortKeyType] = kv.split(",").toList.map((x: String) => x match {
-            case "d" => decimalKeyType
-            case "i" => integerKeyType
-            case "s" => stringKeyType
-            case "-d" => decimalNegKeyType
-            case "-i" => integerNegKeyType
-            case "-s" => stringNegKeyType
-            case _ => return Left("Could not read key type")
-          })
-          return readArguments(tail, options.copy(keyType = ktypes))
+          val ktypes: List[sortKeyType] = kv
+            .split(",")
+            .toList
+            .map((x: String) =>
+              x match {
+                case "d"  => decimalKeyType
+                case "i"  => integerKeyType
+                case "s"  => stringKeyType
+                case "-d" => decimalNegKeyType
+                case "-i" => integerNegKeyType
+                case "-s" => stringNegKeyType
+                case _    => return Left("Could not read key type")
+            })
+          readArguments(tail, options.copy(keyType = ktypes))
         }
         case "--unixsort" :: tail => {
-          return readArguments(tail, options.copy(unixPrepare = true))
+          readArguments(tail, options.copy(unixPrepare = true))
+        }
+        case "--out" :: outname :: tail => {
+          readArguments(tail, options.copy(outFileName = outname))
         }
         case "--complex" :: tail => {
-          return readArguments(tail, options.copy(complexSort = true))
+          readArguments(tail, options.copy(complexSort = true))
         }
         case Nil => Right(options)
-        case _ => Left(s"Unknown options ${arguments}")
+        case _   => Left(s"Unknown options ${arguments}")
       }
     }
 
     /**
-     * Make sure that the amount of keytypes equals the amount of keylocations
-     */
+      * Make sure that the amount of keytypes equals the amount of keylocations
+      */
     def fixSettings(settings: ExortSetting): ExortSetting = {
       if (settings.keyNr.length < settings.keyType.length) {
-        settings.copy(keyType = settings.keyType.slice(0, settings.keyNr.length))
+        settings.copy(
+          keyType = settings.keyType.slice(0, settings.keyNr.length))
       } else if (settings.keyType.length > settings.keyType.length) {
         val diff = settings.keyType.length - settings.keyType.length
-        settings.copy(keyType = settings.keyType ++ List.fill(diff)(stringKeyType))
+        settings.copy(
+          keyType = settings.keyType ++ List.fill(diff)(stringKeyType))
       } else {
         settings
       }
@@ -159,10 +173,10 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
   }
 
   /**
-   * Program entry point
-   *
-   * @param args command line arguments
-   */
+    * Program entry point
+    *
+    * @param args command line arguments
+    */
   def main(args: Array[String]): Unit = {
     if (args.length < 1) {
       printHelp

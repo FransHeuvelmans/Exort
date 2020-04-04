@@ -34,6 +34,7 @@ object Tools {
     fmt.setDelimiter(sep)
     settings.getFormat.setLineSeparator("\n")
     settings.setHeaderExtractionEnabled(hasHeader)
+    settings.setSkipEmptyLines(true)
     new CsvParser(settings)
   }
 
@@ -46,6 +47,7 @@ object Tools {
     val settings = new TsvParserSettings()
     settings.getFormat.setLineSeparator("\n")
     settings.setHeaderExtractionEnabled(hasHeader)
+    settings.setSkipEmptyLines(true)
     new TsvParser(settings)
   }
 
@@ -69,10 +71,10 @@ object Tools {
   def tempOutputFile(location: Path, nr: Int = 0): File =
     new File(location.toFile, s"p${nr}.tsv")
 
-  def endOutputFile(oldFile: File): File = {
-    val outFileNameParts = oldFile.getName.split('.')
+  def endOutputFileName(oldFileName: String): String = {
+    val outFileNameParts = oldFileName.split('.')
     val baseName = outFileNameParts.slice(0, outFileNameParts.length - 1).mkString("_")
-    new File(baseName + "_sorted.tsv")
+    baseName + "_sorted.tsv"
   }
 
   /**
@@ -132,54 +134,84 @@ object Tools {
    */
   def convertToVaryRow(inSource: Array[String],
                        setting: ExortSetting,
-                       addSource: Boolean = true): VaryRow = {
+                       addSource: Boolean = true): Either[String, VaryRow] = {
+
+    val inSourceSafe = inSource.lift
+    def getSafe(idx: Int): Option[String] = inSourceSafe(idx).flatMap(s => s match {
+        case null => Option.empty
+        case anS: String => Option(anS)
+      })
 
     @scala.annotation.tailrec
-    def createRow(tempSetting: ExortSetting, outRow: VaryRow): VaryRow = {
+    def createRow(tempSetting: ExortSetting, outRow: VaryRow): Either[String, VaryRow] = {
       tempSetting.keyType match {
         case sortKeyType.integerKeyType :: tail => {
+          val longVal = getSafe(tempSetting.keyNr.head).flatMap(_.toLongOption)
+          if (longVal.isEmpty) {
+            return Left(s"Could not read longval at col ${tempSetting.keyNr.head}")
+          }
           val newRow = outRow.copy(
-            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toLong)
+            v3 = outRow.v3 :+ longVal.get)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
         }
         case sortKeyType.integerNegKeyType :: tail => {
+          val longVal = getSafe(tempSetting.keyNr.head).flatMap(_.toLongOption)
+          if (longVal.isEmpty) {
+            return Left(s"Could not read longval at col ${tempSetting.keyNr.head}")
+          }
           val newRow = outRow.copy(
-            v3 = outRow.v3 :+ inSource(tempSetting.keyNr.head).toLong)
+            v3 = outRow.v3 :+ longVal.get)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
         }
         case sortKeyType.decimalKeyType :: tail => {
+          val doubleVal = getSafe(tempSetting.keyNr.head).flatMap(_.toDoubleOption)
+          if (doubleVal.isEmpty) {
+            return Left(s"Could not read doubleval at col ${tempSetting.keyNr.head}")
+          }
           val newRow = outRow.copy(
-            v2 = outRow.v2 :+ inSource(tempSetting.keyNr.head).toDouble)
+            v2 = outRow.v2 :+ doubleVal.get)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
         }
         case sortKeyType.decimalNegKeyType :: tail => {
+          val doubleVal = getSafe(tempSetting.keyNr.head).flatMap(_.toDoubleOption)
+          if (doubleVal.isEmpty) {
+            return Left(s"Could not read doubleval at col ${tempSetting.keyNr.head}")
+          }
           val newRow = outRow.copy(
-            v2 = outRow.v2 :+ inSource(tempSetting.keyNr.head).toDouble)
+            v2 = outRow.v2 :+ doubleVal.get)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
         }
         case sortKeyType.stringKeyType :: tail => {
+          val strVal = getSafe(tempSetting.keyNr.head)
+          if (strVal.isEmpty) {
+            return Left(s"Could not read stringval at col ${tempSetting.keyNr.head}")
+          }
           val newRow =
-            outRow.copy(v1 = outRow.v1 :+ inSource(tempSetting.keyNr.head))
+            outRow.copy(v1 = outRow.v1 :+ strVal.get)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
         }
         case sortKeyType.stringNegKeyType :: tail => {
+          val strVal = getSafe(tempSetting.keyNr.head)
+          if (strVal.isEmpty) {
+            return Left(s"Could not read stringval at col ${tempSetting.keyNr.head}")
+          }
           val newRow =
-            outRow.copy(v1 = outRow.v1 :+ inSource(tempSetting.keyNr.head))
+            outRow.copy(v1 = outRow.v1 :+ strVal.get)
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),
                     newRow)
         }
-        case Nil => outRow
+        case Nil => Right(outRow)
         case _ =>
           createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
                                      keyNr = tempSetting.keyNr.tail),

@@ -8,30 +8,30 @@ class SortedFileLogicTest extends FlatSpec {
     val testFiles: List[TempSortedFile] = List(LongSortedFile(0, 5, null),
                                                LongSortedFile(6, 10, null),
                                                LongSortedFile(11, 15, null))
-    val compareFile: TempSortedFile = LongSortedFile(16, 100, null)
+    val compareFile = LongSortedFile(16, 100, null)
     val results = testFiles.map(compareFile.distance(_))
-    results.foreach(r => assert(r.head > 0))
-    results.sliding(2).foreach(r2 => r2(0).head > r2(1).head)
+    results.foreach(r => assert(r > 0))
+    results.sliding(2).foreach(r2 => r2(0) > r2(1))
   }
 
   "a list of overlapping Longfiles" should "be equal in all cases in either direction" in {
     val testFiles: List[TempSortedFile] =
       List(LongSortedFile(0, 8, null), LongSortedFile(14, 25, null))
-    val compareFile: TempSortedFile = LongSortedFile(5, 15, null)
+    val compareFile = LongSortedFile(5, 15, null)
     val results = testFiles.map(compareFile.distance(_))
-    results.foreach(r => assert(r.head == 0))
+    results.foreach(r => assert(r == 0))
     val reverseResults = testFiles.map(compareFile.distance(_, true))
-    reverseResults.foreach(r => assert(r.head === 0))
+    reverseResults.foreach(r => assert(r === 0))
   }
 
   "a decreasing list of separated Longfiles" should "be completely mergable" in {
     val testFiles: List[TempSortedFile] = List(LongSortedFile(16, 20, null),
                                                LongSortedFile(11, 15, null),
                                                LongSortedFile(6, 10, null))
-    val compareFile: TempSortedFile = LongSortedFile(-100, 5, null)
+    val compareFile = LongSortedFile(-100, 5, null)
     val results = testFiles.map(compareFile.distance(_, true))
-    results.foreach(r => assert(r.head > 0))
-    results.sliding(2).foreach(r2 => r2(0).head > r2(1).head)
+    results.foreach(r => assert(r > 0))
+    results.sliding(2).foreach(r2 => r2(0) > r2(1))
   }
 
   "lists of separated VaryFiles" should "be completely mergable" in {

@@ -5,8 +5,6 @@ import java.io.File
 import scala.util.Sorting
 
 sealed trait TempSortedFile {
-  // Distance between two sorted files (if there is any)
-  def distance(other: TempSortedFile, reverse: Boolean = false): List[Double]
 
   // For now cast down to a list of doubles
   def file: File
@@ -15,24 +13,24 @@ sealed trait TempSortedFile {
 case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
     extends TempSortedFile {
   require(vlow <= vhigh)
-  override def distance(other: TempSortedFile,
-                        reverse: Boolean = false): List[Double] = {
+  def distance(other: TempSortedFile,
+                        reverse: Boolean = false): Long = {
     val dis = other match {
       case o: LongSortedFile => {
         if (this.vlow > o.vhigh) { // case 2 & 3
-          (this.vlow - o.vhigh).toDouble // - / r+
+          this.vlow - o.vhigh // - / r+
         } else if (this.vhigh < o.vlow) { // case 1 & 4
-          (this.vhigh -o.vlow).toDouble // + / r-
+          this.vhigh - o.vlow // + / r-
         } else {
-          0.0
+          0L
         }
       }
-      case _ => 0.0
+      case _ => 0L
     }
     if (reverse) {
-      -dis :: Nil
+      -dis
     } else {
-      dis :: Nil
+      dis
     }
   }
 }
@@ -40,8 +38,8 @@ case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
 case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
     extends TempSortedFile {
   require(vlow <= vhigh)
-  override def distance(other: TempSortedFile,
-                        reverse: Boolean = false): List[Double] = {
+  def distance(other: TempSortedFile,
+                        reverse: Boolean = false): Double = {
     val dis = other match {
       case o: LongSortedFile => {
         if (this.vlow > o.vhigh) {
@@ -55,9 +53,9 @@ case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
       case _ => 0.0
     }
     if (reverse) {
-      -dis :: Nil
+      -dis
     } else {
-      dis :: Nil
+      dis
     }
   }
 }
@@ -65,8 +63,8 @@ case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
 case class StringSortedFile(vlow: String, vhigh: String, file: File)
     extends TempSortedFile {
   require(vlow <= vhigh)
-  override def distance(other: TempSortedFile,
-                        reverse: Boolean = false): List[Double] = {
+  def distance(other: TempSortedFile,
+                        reverse: Boolean = false): List[Int] = {
     val dis = other match {
       case o: StringSortedFile => {
         if (this.vlow > o.vhigh) {
@@ -80,11 +78,11 @@ case class StringSortedFile(vlow: String, vhigh: String, file: File)
       case _ => 0 :: Nil
     }
     if (reverse) {
-      dis.map(-_.toDouble)
+      dis.map(-1 * _)
       // TODO: Reverse ordering in this case could be more complicated that simply reversing the values
       // would you want cc c bb b aa a OR c cc b bb a aa
     } else {
-      dis.map(_.toDouble)
+      dis
     }
   }
 }
@@ -95,7 +93,7 @@ case class StringSortedFile(vlow: String, vhigh: String, file: File)
 case class VarySortedFile(vstart: VaryRow, vend: VaryRow, file: File)
     extends TempSortedFile {
 
-  override def distance(other: TempSortedFile,
+  def distance(other: TempSortedFile,
                         reverse: Boolean = false): List[Double] = {
     require(!reverse) // Should use special ordering types for varyrows
     other match {
@@ -115,29 +113,29 @@ case class VarySortedFile(vstart: VaryRow, vend: VaryRow, file: File)
 
 object FileSort {
   // Distance comparisons less than
-  def lt(a: List[Double], b: List[Double]): Boolean = {
+  def lt[T](a: List[T], b: List[T])(implicit num: Numeric[T]): Boolean = {
     val maxSize = Math.max(a.length, b.length)
-    val aFull = a.padTo(maxSize, 0.0)
-    val bFull = b.padTo(maxSize, 0.0)
-    val comparisons = aFull.zip(bFull).map(ab => ab._1 - ab._2)
+    val aFull = a.padTo(maxSize, num.zero)
+    val bFull = b.padTo(maxSize, num.zero)
+    val comparisons = aFull.zip(bFull).map(ab => num.minus(ab._1, ab._2))
     comparisons.foreach(c =>
-      if (c > 0) {
+      if (num.gt(c, num.zero)) {
         return false
-      } else if (c < 0) {
+      } else if (num.lt(c, num.zero)) {
         return true
     })
     false
   }
 
-  def gt(a: List[Double], b: List[Double]): Boolean = {
+  def gt[T](a: List[T], b: List[T])(implicit num: Numeric[T]): Boolean = {
     val maxSize = Math.max(a.length, b.length)
-    val aFull = a.padTo(maxSize, 0.0)
-    val bFull = b.padTo(maxSize, 0.0)
-    val comparisons = aFull.zip(bFull).map(ab => ab._1 - ab._2)
+    val aFull = a.padTo(maxSize, num.zero)
+    val bFull = b.padTo(maxSize, num.zero)
+    val comparisons = aFull.zip(bFull).map(ab => num.minus(ab._1, ab._2))
     comparisons.foreach(c =>
-      if (c < 0) {
+      if (num.lt(c, num.zero)) {
         return false
-      } else if (c > 0) {
+      } else if (num.gt(c, num.zero)) {
         return true
     })
     false

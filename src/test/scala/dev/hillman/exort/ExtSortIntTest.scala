@@ -25,7 +25,8 @@ class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
   val settings = ExortSetting(testFileA,
                               rowSplit = 6,
                               keyType = sortKeyType.integerKeyType :: Nil,
-                              keyNr = 1 :: Nil)
+                              keyNr = 1 :: Nil,
+                              outFileName = "testfileA_sorted.tsv")
   var outFiles: List[TempSortedFile] = _
   val p0Vals = 7 :: 9 :: 10 :: 11 :: 12 :: 13 :: Nil
   val p1Vals = 78 :: 97 :: 100 :: 101 :: 105 :: 110 :: Nil
@@ -64,10 +65,13 @@ class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
     testFileA,
     rowSplit = 6,
     keyType = sortKeyType.integerNegKeyType :: Nil,
-    keyNr = 1 :: Nil)
+    keyNr = 1 :: Nil,
+    outFileName = "testfileA_sorted.tsv")
 
   "A non-sorted inputfile" should "be reverse-sortable" in {
-    val outFilesReverse = ExtSort.sortParts(testDirectory, reverseSettings).map(_.asInstanceOf[LongSortedFile])
+    val outFilesReverse = ExtSort
+      .sortParts(testDirectory, reverseSettings)
+      .map(_.asInstanceOf[LongSortedFile])
     testFile(outFilesReverse(0).file, p0Vals.reverse, settings.keyNr.head)
     testFile(outFilesReverse(1).file, p1Vals.reverse, settings.keyNr.head)
     assert(outFilesReverse.head.vlow === 7)

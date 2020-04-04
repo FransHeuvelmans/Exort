@@ -2,7 +2,7 @@ import csv
 
 # Note that there could be differences between the python-data-types here
 # and Java's datatypes used in Exort (currently)
-testloc = "../testbig1_sorted.tsv"
+testloc = "../testbig1_done.tsv"
 #testloc = "/tmp/exsort_JjBHvyyh1A1610421042881013882/p1-p5.tsv"
 locs = [2, 3, 1]
 types = [int, str, float]

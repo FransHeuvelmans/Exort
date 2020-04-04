@@ -1,6 +1,7 @@
 name := "Exort"
 
 version := "0.2.0"
+organization := "dev.hillman"
 
 scalaVersion := "2.13.1"
 scalacOptions ++= Seq("-deprecation", "-feature")

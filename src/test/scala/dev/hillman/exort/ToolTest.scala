@@ -10,9 +10,10 @@ class ToolTest extends FlatSpec with Matchers {
     val settings = ExortSetting(null,
       rowSplit = 1000000,
       keyType = sortTypeList,
-      keyNr = 3 :: 1 :: 0 :: Nil)
+      keyNr = 3 :: 1 :: 0 :: Nil,
+      outFileName = "")
     val data = Array("120", "abc", "12.34", "56")
-    val row = Tools.convertToVaryRow(data, settings)
+    val row = Tools.convertToVaryRow(data, settings).toOption.get
     assert(row.v1(0) === "abc")
     assert(row.v3 === List(56, 120))
     assert(row.vs === sortTypeList)

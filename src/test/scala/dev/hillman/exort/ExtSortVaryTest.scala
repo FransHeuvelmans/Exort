@@ -36,7 +36,8 @@ class ExtSortVaryTest extends FlatSpec {
   val allAtOnceSetting = ExortSetting(
     testFileVary,
     keyType = sortKeyType.stringKeyType :: sortKeyType.integerNegKeyType :: Nil,
-    keyNr = 1 :: 0 :: Nil)
+    keyNr = 1 :: 0 :: Nil,
+    outFileName = "testfileVary_sorted.csv")
   val fullResult = List(
     (10, "a"),
     (9, "a"),
