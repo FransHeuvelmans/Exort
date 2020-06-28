@@ -3,9 +3,10 @@ import dev.hillman.exort.Tools.sortKeyType
 import java.io.File
 import java.nio.file.Paths
 
-import org.scalatest.{BeforeAndAfter, FlatSpec}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.BeforeAndAfter
 
-class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
+class ExtSortIntTest extends AnyFlatSpec with BeforeAndAfter {
 
   def testFile(fileToCheck: File, answers: List[Int], keyLoc: Int): Unit = {
     val parser = Tools.tsvParser(false)
@@ -24,8 +25,8 @@ class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
   val testFileA = new File(testDirectory.toString + "/testfileA.csv")
   val settings = ExortSetting(testFileA,
                               rowSplit = 6,
-                              keyType = sortKeyType.integerKeyType :: Nil,
-                              keyNr = 1 :: Nil,
+                              keyType = Array(sortKeyType.integerKeyType),
+                              keyNr = Array(1),
                               outFileName = "testfileA_sorted.tsv")
   var outFiles: List[TempSortedFile] = _
   val p0Vals = 7 :: 9 :: 10 :: 11 :: 12 :: 13 :: Nil
@@ -61,12 +62,12 @@ class ExtSortIntTest extends FlatSpec with BeforeAndAfter {
     f.delete()
   }
 
-  val reverseSettings = ExortSetting(
-    testFileA,
-    rowSplit = 6,
-    keyType = sortKeyType.integerNegKeyType :: Nil,
-    keyNr = 1 :: Nil,
-    outFileName = "testfileA_sorted.tsv")
+  val reverseSettings = ExortSetting(testFileA,
+                                     rowSplit = 6,
+                                     keyType =
+                                       Array(sortKeyType.integerNegKeyType),
+                                     keyNr = Array(1),
+                                     outFileName = "testfileA_sorted.tsv")
 
   "A non-sorted inputfile" should "be reverse-sortable" in {
     val outFilesReverse = ExtSort

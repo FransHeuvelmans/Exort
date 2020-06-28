@@ -2,17 +2,13 @@ package dev.hillman.exort
 
 import java.io.File
 import java.nio.file.{Files, Path}
-import scala.jdk.StreamConverters._
 
+import scala.jdk.StreamConverters._
 import com.univocity.parsers.csv.{CsvParser, CsvParserSettings}
-import com.univocity.parsers.tsv.{
-  TsvParser,
-  TsvParserSettings,
-  TsvWriter,
-  TsvWriterSettings
-}
+import com.univocity.parsers.tsv.{TsvParser, TsvParserSettings, TsvWriter, TsvWriterSettings}
 import Tools.sortKeyType
 
+import scala.Option
 import scala.util.Random
 
 object Tools {
@@ -142,80 +138,68 @@ object Tools {
         case anS: String => Option(anS)
       })
 
+
     @scala.annotation.tailrec
-    def createRow(tempSetting: ExortSetting, outRow: VaryRow): Either[String, VaryRow] = {
-      tempSetting.keyType match {
-        case sortKeyType.integerKeyType :: tail => {
-          val longVal = getSafe(tempSetting.keyNr.head).flatMap(_.toLongOption)
+    def createRow(idx: Int, outRow: VaryRow): Either[String, VaryRow] = {
+      if (idx >= setting.keyType.length) {
+        return Right(outRow)
+      }
+      setting.keyType(idx) match {
+        case sortKeyType.integerKeyType => {
+          val longVal = getSafe(setting.keyNr(idx)).flatMap(_.toLongOption)
           if (longVal.isEmpty) {
-            return Left(s"Could not read longval at col ${tempSetting.keyNr.head}")
+            return Left(s"Could not read longval at col ${setting.keyNr(idx)}")
           }
           val newRow = outRow.copy(
             v3 = outRow.v3 :+ longVal.get)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
-                                     keyNr = tempSetting.keyNr.tail),
-                    newRow)
+          createRow(idx + 1, newRow)
         }
-        case sortKeyType.integerNegKeyType :: tail => {
-          val longVal = getSafe(tempSetting.keyNr.head).flatMap(_.toLongOption)
+        case sortKeyType.integerNegKeyType => {
+          val longVal = getSafe(setting.keyNr(idx)).flatMap(_.toLongOption)
           if (longVal.isEmpty) {
-            return Left(s"Could not read longval at col ${tempSetting.keyNr.head}")
+            return Left(s"Could not read longval at col ${setting.keyNr(idx)}")
           }
           val newRow = outRow.copy(
             v3 = outRow.v3 :+ longVal.get)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
-                                     keyNr = tempSetting.keyNr.tail),
-                    newRow)
+          createRow(idx + 1, newRow)
         }
-        case sortKeyType.decimalKeyType :: tail => {
-          val doubleVal = getSafe(tempSetting.keyNr.head).flatMap(_.toDoubleOption)
+        case sortKeyType.decimalKeyType => {
+          val doubleVal = getSafe(setting.keyNr(idx)).flatMap(_.toDoubleOption)
           if (doubleVal.isEmpty) {
-            return Left(s"Could not read doubleval at col ${tempSetting.keyNr.head}")
+            return Left(s"Could not read doubleval at col ${setting.keyNr(idx)}")
           }
           val newRow = outRow.copy(
             v2 = outRow.v2 :+ doubleVal.get)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
-                                     keyNr = tempSetting.keyNr.tail),
-                    newRow)
+          createRow(idx + 1, newRow)
         }
-        case sortKeyType.decimalNegKeyType :: tail => {
-          val doubleVal = getSafe(tempSetting.keyNr.head).flatMap(_.toDoubleOption)
+        case sortKeyType.decimalNegKeyType => {
+          val doubleVal = getSafe(setting.keyNr(idx)).flatMap(_.toDoubleOption)
           if (doubleVal.isEmpty) {
-            return Left(s"Could not read doubleval at col ${tempSetting.keyNr.head}")
+            return Left(s"Could not read doubleval at col ${setting.keyNr(idx)}")
           }
           val newRow = outRow.copy(
             v2 = outRow.v2 :+ doubleVal.get)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
-                                     keyNr = tempSetting.keyNr.tail),
-                    newRow)
+          createRow(idx + 1, newRow)
         }
-        case sortKeyType.stringKeyType :: tail => {
-          val strVal = getSafe(tempSetting.keyNr.head)
+        case sortKeyType.stringKeyType => {
+          val strVal = getSafe(setting.keyNr(idx))
           if (strVal.isEmpty) {
-            return Left(s"Could not read stringval at col ${tempSetting.keyNr.head}")
+            return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
           }
           val newRow =
             outRow.copy(v1 = outRow.v1 :+ strVal.get)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
-                                     keyNr = tempSetting.keyNr.tail),
-                    newRow)
+          createRow(idx + 1, newRow)
         }
-        case sortKeyType.stringNegKeyType :: tail => {
-          val strVal = getSafe(tempSetting.keyNr.head)
+        case sortKeyType.stringNegKeyType => {
+          val strVal = getSafe(setting.keyNr(idx))
           if (strVal.isEmpty) {
-            return Left(s"Could not read stringval at col ${tempSetting.keyNr.head}")
+            return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
           }
           val newRow =
             outRow.copy(v1 = outRow.v1 :+ strVal.get)
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
-                                     keyNr = tempSetting.keyNr.tail),
-                    newRow)
+          createRow(idx + 1, newRow)
         }
-        case Nil => Right(outRow)
-        case _ =>
-          createRow(tempSetting.copy(keyType = tempSetting.keyType.tail,
-                                     keyNr = tempSetting.keyNr.tail),
-                    outRow)
+        case _ => Left(s"Unknown sortKeyType: ${setting.keyType(idx)}")
       }
     }
     val emptyRow = if (addSource) {
@@ -223,7 +207,112 @@ object Tools {
     } else {
       VaryRow(Nil, Nil, Nil, setting.keyType, Array[String]())
     }
-    createRow(setting, emptyRow)
+    createRow(0, emptyRow)
+  }
+
+  /**
+   * Create a new VaryRowComplex based based on a string-array and the settings
+   * @param inSource raw separated column data
+   * @param setting settings for interpreting the file
+   * @param addSource Store the original string array in the object
+   * @return a new VaryRowComplex object
+   */
+  def convertToComplexVaryRow(inSource: Array[String],
+                       setting: ExortSetting,
+                       addSource: Boolean = true): Either[String, VaryRowComplex] = {
+
+    @scala.annotation.tailrec
+    def createComplexRow(idx: Int, outRow: VaryRowComplex): Either[String, VaryRowComplex] = {
+      if (idx >= setting.keyType.length) {
+        return Right(outRow)
+      }
+      setting.keyType(idx) match {
+        case sortKeyType.integerKeyType => {
+          val bintVal = try {
+            Option(BigInt(inSource(setting.keyNr(idx))))
+          } catch {
+            case np: java.lang.NullPointerException => Option.empty
+            case e: java.lang.NumberFormatException => Option.empty
+          }
+          if (bintVal.isEmpty) {
+            return Left(s"Could not read bigint at col ${setting.keyNr(idx)}")
+          }
+          val newRow = outRow.copy(
+            v3 = outRow.v3 :+ bintVal.get)
+          createComplexRow(idx + 1, newRow)
+        }
+        case sortKeyType.integerNegKeyType => {
+          val bintVal = try {
+            Option(BigInt(inSource(setting.keyNr(idx))))
+          } catch {
+            case np: java.lang.NullPointerException => Option.empty
+            case e: java.lang.NumberFormatException => Option.empty
+          }
+          if (bintVal.isEmpty) {
+            return Left(s"Could not read bigint at col ${setting.keyNr(idx)}")
+          }
+          val newRow = outRow.copy(
+            v3 = outRow.v3 :+ bintVal.get)
+          createComplexRow(idx + 1, newRow)
+        }
+        case sortKeyType.decimalKeyType => {
+          val bdecVal = try {
+            Option(BigDecimal(inSource(setting.keyNr(idx))))
+          } catch {
+            case np: java.lang.NullPointerException => Option.empty
+            case e: java.lang.NumberFormatException => Option.empty
+          }
+          if (bdecVal.isEmpty) {
+            return Left(s"Could not read bigdecimal at col ${setting.keyNr(idx)}")
+          }
+          val newRow = outRow.copy(
+            v2 = outRow.v2 :+ bdecVal.get)
+          createComplexRow(idx + 1, newRow)
+        }
+        case sortKeyType.decimalNegKeyType => {
+          val bdecVal = try {
+            Option(BigDecimal(inSource(setting.keyNr(idx))))
+          } catch {
+            case np: java.lang.NullPointerException => Option.empty
+            case e: java.lang.NumberFormatException => Option.empty
+          }
+          if (bdecVal.isEmpty) {
+            return Left(s"Could not read bigdecimal at col ${setting.keyNr(idx)}")
+          }
+          val newRow = outRow.copy(
+            v2 = outRow.v2 :+ bdecVal.get)
+          createComplexRow(idx + 1, newRow)
+        }
+        case sortKeyType.stringKeyType => {
+          val strVal = inSource.lift(setting.keyNr(idx))
+          if (strVal.isEmpty || (strVal.get == null)) {
+            return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
+          }
+          val newRow =
+            outRow.copy(v1 = outRow.v1 :+ strVal.get)
+          createComplexRow(idx + 1, newRow)
+        }
+        case sortKeyType.stringNegKeyType => {
+          val strVal = inSource.lift(setting.keyNr(idx))
+          if (strVal.isEmpty || (strVal.get == null)) {
+            return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
+          }
+          if (strVal.isEmpty) {
+            return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
+          }
+          val newRow =
+            outRow.copy(v1 = outRow.v1 :+ strVal.get)
+          createComplexRow(idx + 1, newRow)
+        }
+        case _ => Left(s"Unknown sortKeyType: ${setting.keyType(idx)}")
+      }
+    }
+    val emptyRow = if (addSource) {
+      VaryRowComplex(Nil, Nil, Nil, setting.keyType, inSource)
+    } else {
+      VaryRowComplex(Nil, Nil, Nil, setting.keyType, Array[String]())
+    }
+    createComplexRow(0, emptyRow)
   }
 
 }

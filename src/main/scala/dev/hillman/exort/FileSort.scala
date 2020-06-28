@@ -111,6 +111,26 @@ case class VarySortedFile(vstart: VaryRow, vend: VaryRow, file: File)
   }
 }
 
+case class ComplexVarySortedFile(vstart: VaryRowComplex, vend: VaryRowComplex, file: File)
+  extends TempSortedFile {
+  def distance(other: TempSortedFile,
+               reverse: Boolean = false): List[BigDecimal] = {
+    require(!reverse) // Should use special ordering types for varyrows
+    other match {
+      case o: ComplexVarySortedFile => {
+        if (ComplexVROrdering.gt(this.vstart, o.vend)) {
+          ComplexVROrdering.distance(this.vstart, o.vend, Nil)
+        } else if (ComplexVROrdering.lt(this.vend, o.vstart)) {
+          ComplexVROrdering.distance(this.vend, o.vstart, Nil)
+        } else {
+          BigDecimal(0.0) :: Nil
+        }
+      }
+      case _ => BigDecimal(0.0) :: Nil
+    }
+  }
+}
+
 object FileSort {
   // Distance comparisons less than
   def lt[T](a: List[T], b: List[T])(implicit num: Numeric[T]): Boolean = {

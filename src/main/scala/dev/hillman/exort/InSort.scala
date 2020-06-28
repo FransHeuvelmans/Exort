@@ -20,7 +20,7 @@ case class StringRow(v: String, content: Array[String]) extends SortableRow {
 case class VaryRow(v1: List[String],
                    v2: List[Double],
                    v3: List[Long],
-                   vs: List[Tools.sortKeyType.sortKeyType],
+                   vs: Array[Tools.sortKeyType.sortKeyType],
                    content: Array[String])
     extends SortableRow {
   def getContent: Array[String] = this.content
@@ -28,7 +28,7 @@ case class VaryRow(v1: List[String],
 case class VaryRowComplex(v1: List[String],
                           v2: List[BigDecimal],
                           v3: List[BigInt],
-                          vs: List[Tools.sortKeyType.sortKeyType],
+                          vs: Array[Tools.sortKeyType.sortKeyType],
                           content: Array[String])
     extends SortableRow {
   def getContent: Array[String] = this.content

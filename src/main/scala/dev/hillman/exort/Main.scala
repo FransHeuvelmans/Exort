@@ -8,8 +8,8 @@ import dev.hillman.exort.Tools.sortKeyType._
 case class ExortSetting(file: File,
                         rowSplit: Int = 20000,
                         sep: Char = ';',
-                        keyType: List[sortKeyType] = stringKeyType :: Nil,
-                        keyNr: List[Int] = 0 :: Nil,
+                        keyType: Array[sortKeyType] = Array(stringKeyType),
+                        keyNr: Array[Int] = Array(0),
                         complexSort: Boolean = false,
                         unixPrepare: Boolean = false,
                         skipHeader: Boolean = false,
@@ -65,7 +65,8 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
     if (!file.exists) {
       return Left(s"File must already exist, tried file ${file.getName}")
     }
-    val defaultOption = ExortSetting(file, outFileName = Tools.endOutputFileName(file.getName))
+    val defaultOption =
+      ExortSetting(file, outFileName = Tools.endOutputFileName(file.getName))
 
     // @scala.annotation.tailrec  // WORKS in 2.12.9 but doesn't in 2.13.0/1 (and intellij marks it as tail-recursive)
     def readArguments(arguments: List[String],
@@ -115,23 +116,21 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
           if (invalidKeys.length < 0) {
             Left("Key value must be positive")
           } else {
-            readArguments(tail, options.copy(keyNr = keyNumbers.toList))
+            readArguments(tail, options.copy(keyNr = keyNumbers))
           }
         }
         case "--keyVal" :: kv :: tail => {
-          val ktypes: List[sortKeyType] = kv
+          val ktypes: Array[sortKeyType] = kv
             .split(",")
-            .toList
-            .map((x: String) =>
-              x match {
-                case "d"  => decimalKeyType
-                case "i"  => integerKeyType
-                case "s"  => stringKeyType
-                case "-d" => decimalNegKeyType
-                case "-i" => integerNegKeyType
-                case "-s" => stringNegKeyType
-                case _    => return Left("Could not read key type")
-            })
+            .map {
+              case "d"  => decimalKeyType
+              case "i"  => integerKeyType
+              case "s"  => stringKeyType
+              case "-d" => decimalNegKeyType
+              case "-i" => integerNegKeyType
+              case "-s" => stringNegKeyType
+              case _    => return Left("Could not read key type")
+            }
           readArguments(tail, options.copy(keyType = ktypes))
         }
         case "--unixsort" :: tail => {
@@ -167,7 +166,7 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
     if (args.length > 1) {
       val otherArguments = args.slice(0, args.length - 1)
       val options = readArguments(otherArguments.toList, defaultOption)
-      return options.map(fixSettings(_))
+      return options.map(fixSettings)
     }
     Right(defaultOption)
   }

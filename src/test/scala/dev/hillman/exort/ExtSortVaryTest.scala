@@ -4,9 +4,9 @@ import java.io.File
 import java.nio.file.Paths
 
 import dev.hillman.exort.Tools.sortKeyType
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class ExtSortVaryTest extends FlatSpec {
+class ExtSortVaryTest extends AnyFlatSpec {
 
   /**
     * Test a list of answers if they are correct
@@ -35,8 +35,8 @@ class ExtSortVaryTest extends FlatSpec {
 
   val allAtOnceSetting = ExortSetting(
     testFileVary,
-    keyType = sortKeyType.stringKeyType :: sortKeyType.integerNegKeyType :: Nil,
-    keyNr = 1 :: 0 :: Nil,
+    keyType = Array(sortKeyType.stringKeyType, sortKeyType.integerNegKeyType),
+    keyNr = Array(1, 0),
     outFileName = "testfileVary_sorted.csv")
   val fullResult = List(
     (10, "a"),

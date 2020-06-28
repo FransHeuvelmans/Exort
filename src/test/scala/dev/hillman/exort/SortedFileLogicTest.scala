@@ -1,8 +1,8 @@
 package dev.hillman.exort
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class SortedFileLogicTest extends FlatSpec {
+class SortedFileLogicTest extends AnyFlatSpec {
 
   "a increasing list of separated LongFiles" should "be completely mergable" in {
     val testFiles: List[TempSortedFile] = List(LongSortedFile(0, 5, null),
@@ -35,7 +35,8 @@ class SortedFileLogicTest extends FlatSpec {
   }
 
   "lists of separated VaryFiles" should "be completely mergable" in {
-    val sortRules = Tools.sortKeyType.stringKeyType :: Tools.sortKeyType.integerKeyType :: Nil
+    val sortRules =
+      Array(Tools.sortKeyType.stringKeyType, Tools.sortKeyType.integerKeyType)
     val testOriginalFiles = List(
       VarySortedFile(VaryRow("a" :: Nil, Nil, 2L :: Nil, sortRules, null),
                      VaryRow("a" :: Nil, Nil, 5L :: Nil, sortRules, null),
@@ -61,7 +62,8 @@ class SortedFileLogicTest extends FlatSpec {
     val normalResults = testFiles.map(compareFile.distance(_))
     normalResults.foreach(r => assert(FileSort.lt(r, Nil)))
     normalResults.sliding(2).foreach(r2 => assert(FileSort.gt(r2(0), r2(1))))
-    val reverseSortRules = Tools.sortKeyType.stringNegKeyType :: Tools.sortKeyType.integerNegKeyType :: Nil
+    val reverseSortRules = Array(Tools.sortKeyType.stringNegKeyType,
+                                 Tools.sortKeyType.integerNegKeyType)
 
     val reverseCompareFile =
       VarySortedFile(compareFile.vstart.copy(vs = reverseSortRules),

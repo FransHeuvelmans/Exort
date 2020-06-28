@@ -1,8 +1,9 @@
 package dev.hillman.exort
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
 
-class InSortTest extends FlatSpec {
+
+class InSortTest extends AnyFlatSpec {
   "Unsorted dev.hillman.Exort.LongRow table after sorting" should "be sorted" in {
     val unsorted = List(
       LongRow(1, Array("aa", "bb", "c", "d")),
@@ -55,7 +56,9 @@ class InSortTest extends FlatSpec {
   }
 
   "unsorted VaryRow table after sorting" should "be sorted" in {
-    val sortOrder = Tools.sortKeyType.stringKeyType :: Tools.sortKeyType.integerKeyType :: Tools.sortKeyType.decimalKeyType :: Nil
+    val sortOrder = Array(Tools.sortKeyType.stringKeyType,
+                          Tools.sortKeyType.integerKeyType,
+                          Tools.sortKeyType.decimalKeyType)
     val unsorted =
       VaryRow("c" :: Nil,
               5.0 :: Nil,
@@ -111,48 +114,50 @@ class InSortTest extends FlatSpec {
   }
 
   it should "also be sortable as Complex VaryRows" in {
-    val sortOrder = Tools.sortKeyType.stringKeyType :: Tools.sortKeyType.integerKeyType :: Tools.sortKeyType.decimalKeyType :: Nil
+    val sortOrder = Array(Tools.sortKeyType.stringKeyType,
+                          Tools.sortKeyType.integerKeyType,
+                          Tools.sortKeyType.decimalKeyType)
     val unsorted =
       VaryRowComplex("c" :: Nil,
-        BigDecimal(5.0) :: Nil,
-        BigInt(11) :: Nil,
-        sortOrder,
-        Array("c", "11", "5.0")) ::
+                     BigDecimal(5.0) :: Nil,
+                     BigInt(11) :: Nil,
+                     sortOrder,
+                     Array("c", "11", "5.0")) ::
         VaryRowComplex("d" :: Nil,
-          BigDecimal(9.0) :: Nil,
-          BigInt(13) :: Nil,
-          sortOrder,
-          Array("d", "13", "9.0")) ::
+                       BigDecimal(9.0) :: Nil,
+                       BigInt(13) :: Nil,
+                       sortOrder,
+                       Array("d", "13", "9.0")) ::
         VaryRowComplex("c" :: Nil,
-          BigDecimal(4.0) :: Nil,
-          BigInt(11) :: Nil,
-          sortOrder,
-          Array("c", "11", "4.0")) ::
+                       BigDecimal(4.0) :: Nil,
+                       BigInt(11) :: Nil,
+                       sortOrder,
+                       Array("c", "11", "4.0")) ::
         VaryRowComplex("e" :: Nil,
-          BigDecimal(3.5) :: Nil,
-          BigInt(15) :: Nil,
-          sortOrder,
-          Array("e", "15", "3.5")) ::
+                       BigDecimal(3.5) :: Nil,
+                       BigInt(15) :: Nil,
+                       sortOrder,
+                       Array("e", "15", "3.5")) ::
         VaryRowComplex("b" :: Nil,
-          BigDecimal(2.0) :: Nil,
-          BigInt(6) :: Nil,
-          sortOrder,
-          Array("b", "6", "2.0")) ::
+                       BigDecimal(2.0) :: Nil,
+                       BigInt(6) :: Nil,
+                       sortOrder,
+                       Array("b", "6", "2.0")) ::
         VaryRowComplex("a" :: Nil,
-          BigDecimal(3.0) :: Nil,
-          BigInt(2) :: Nil,
-          sortOrder,
-          Array("a", "2", "3.0")) ::
+                       BigDecimal(3.0) :: Nil,
+                       BigInt(2) :: Nil,
+                       sortOrder,
+                       Array("a", "2", "3.0")) ::
         VaryRowComplex("c" :: Nil,
-          BigDecimal(3.0) :: Nil,
-          BigInt(9) :: Nil,
-          sortOrder,
-          Array("c", "9", "3.0")) ::
+                       BigDecimal(3.0) :: Nil,
+                       BigInt(9) :: Nil,
+                       sortOrder,
+                       Array("c", "9", "3.0")) ::
         VaryRowComplex("a" :: Nil,
-          BigDecimal(1.0) :: Nil,
-          BigInt(1) :: Nil,
-          sortOrder,
-          Array("a", "1", "1.0")) :: Nil
+                       BigDecimal(1.0) :: Nil,
+                       BigInt(1) :: Nil,
+                       sortOrder,
+                       Array("a", "1", "1.0")) :: Nil
     val out = InSort.sortVaryRowComplex(unsorted)
     assert(out(0).content(1) === "1")
     assert(out(1).content(1) === "2")
@@ -180,7 +185,8 @@ class InSortTest extends FlatSpec {
   }
 
   "unsorted VaryRow table with ascending and descending columns" should "be sortable" in {
-    val sortOrder = Tools.sortKeyType.stringKeyType :: Tools.sortKeyType.integerNegKeyType :: Nil
+    val sortOrder = Array(Tools.sortKeyType.stringKeyType,
+                          Tools.sortKeyType.integerNegKeyType)
     val unsorted = List(
       VaryRow("c" :: Nil, Nil, 1L :: Nil, sortOrder, Array("1", "c")),
       VaryRow("c" :: Nil, Nil, 2L :: Nil, sortOrder, Array("2", "c")),
@@ -193,6 +199,8 @@ class InSortTest extends FlatSpec {
     assert(out(0).content(1) === "a")
     assert(out(5).content(1) === "c")
     val longAnswers = 6L to 1L by -1
-    out.zip(longAnswers).foreach(rowAns => assert(rowAns._1.content(0) === rowAns._2.toString))
+    out
+      .zip(longAnswers)
+      .foreach(rowAns => assert(rowAns._1.content(0) === rowAns._2.toString))
   }
 }

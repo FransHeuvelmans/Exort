@@ -1,8 +1,9 @@
 package dev.hillman.exort
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class MainTest extends FlatSpec with Matchers {
+class MainTest extends AnyFlatSpec with Matchers {
   "A single argument invocation" should "give default settings" in {
     val testFileLoc = "src/test/resources/testfileA.csv"
     val simpleInvocation = Array(testFileLoc)
