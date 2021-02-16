@@ -1,9 +1,10 @@
 package dev.hillman.exort
 
 import java.io.File
-
 import com.univocity.parsers.tsv.{TsvWriter, TsvWriterSettings}
 import dev.hillman.exort.Tools.sortKeyType._
+
+import scala.annotation.tailrec
 
 case class ExortSetting(file: File,
                         rowSplit: Int = 20000,
@@ -22,7 +23,7 @@ object Main {
     * (easy for use with unix sort which might have problems with keys
     * in combination with difficult quoted columns)
     */
-  def unixSortPrepare(settings: ExortSetting) = {
+  def unixSortPrepare(settings: ExortSetting): Unit = {
     val outFile = new File(settings.outFileName)
     val writer = new TsvWriter(outFile, new TsvWriterSettings)
 
@@ -31,7 +32,7 @@ object Main {
       case _    => Tools.csvParser(settings.sep, settings.skipHeader)
     }
 
-    def unixReadyLine(line: Array[String]) = {
+    def unixReadyLine(line: Array[String]): Unit = {
       val keyElems = settings.keyNr.map(line(_))
       val newLine = keyElems ++ line
       writer.writeRow(newLine: _*)
@@ -45,7 +46,7 @@ object Main {
   /**
     * Print the help instructions on how to use this program
     */
-  def printHelp() = {
+  def printHelp: Unit = {
     val bighelp =
       """Sort CSV files larger than memory
 done by splitting up a file and using mergesort on the parts
@@ -68,7 +69,7 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
     val defaultOption =
       ExortSetting(file, outFileName = Tools.endOutputFileName(file.getName))
 
-    // @scala.annotation.tailrec  // WORKS in 2.12.9 but doesn't in 2.13.0/1 (and intellij marks it as tail-recursive)
+    @tailrec
     def readArguments(arguments: List[String],
                       options: ExortSetting): Either[String, ExortSetting] = {
       arguments match {
@@ -120,18 +121,21 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
           }
         }
         case "--keyVal" :: kv :: tail => {
-          val ktypes: Array[sortKeyType] = kv
+          val ktypes: Array[Option[sortKeyType]] = kv
             .split(",")
             .map {
-              case "d"  => decimalKeyType
-              case "i"  => integerKeyType
-              case "s"  => stringKeyType
-              case "-d" => decimalNegKeyType
-              case "-i" => integerNegKeyType
-              case "-s" => stringNegKeyType
-              case _    => return Left("Could not read key type")
+              case "d"  => Option(decimalKeyType)
+              case "i"  => Option(integerKeyType)
+              case "s"  => Option(stringKeyType)
+              case "-d" => Option(decimalNegKeyType)
+              case "-i" => Option(integerNegKeyType)
+              case "-s" => Option(stringNegKeyType)
+              case _    => Option.empty
             }
-          readArguments(tail, options.copy(keyType = ktypes))
+          if (ktypes.contains(Option.empty)) {
+            return Left("Could not read key type")
+          }
+          readArguments(tail, options.copy(keyType = ktypes.flatten))
         }
         case "--unixsort" :: tail => {
           readArguments(tail, options.copy(unixPrepare = true))
