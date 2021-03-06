@@ -6,7 +6,7 @@ import dev.hillman.exort.Tools.sortKeyType._
 
 import scala.annotation.tailrec
 
-case class ExortSetting(file: File,
+case class ExortSetting(files: List[File],
                         rowSplit: Int = 20000,
                         sep: Char = ';',
                         keyType: Array[sortKeyType] = Array(stringKeyType),
@@ -38,7 +38,8 @@ object Main {
       writer.writeRow(newLine: _*)
     }
 
-    val iterCsv = parser.iterate(settings.file)
+    // TODO: Can this work for multiple files ??
+    val iterCsv = parser.iterate(settings.files.head)
     iterCsv.forEach((x) => unixReadyLine(x))
     writer.close()
   }
@@ -55,6 +56,21 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
   }
 
   /**
+    * Add file-parameter before the last file
+    * @param extraFile new file parameter
+    * @param existingFiles previously parsed file parameters
+    * @return new list of file parameters
+    */
+  def addExtraFile(extraFile: File, existingFiles: List[File]): List[File] = {
+    if (existingFiles.length < 2) {
+      extraFile :: existingFiles
+    } else {
+      val (start, end) = existingFiles.splitAt(existingFiles.length - 1)
+      start ::: extraFile :: end
+    }
+  }
+
+  /**
     * A method to read the commandline arguments
     *
     * @param args
@@ -67,7 +83,8 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
       return Left(s"File must already exist, tried file ${file.getName}")
     }
     val defaultOption =
-      ExortSetting(file, outFileName = Tools.endOutputFileName(file.getName))
+      ExortSetting(List(file),
+                   outFileName = Tools.endOutputFileName(file.getName))
 
     @tailrec
     def readArguments(arguments: List[String],
@@ -109,9 +126,10 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
         }
         case "--key" :: kn :: tail => {
           val keyNumbers = try {
-            kn.split(",").map(_.toInt)
+            kn.split(",").map((v: String) => v.toInt)
           } catch {
-            case _: Throwable => return Left("Could not read key number")
+            case x: Throwable =>
+              val y = x; return Left("Could not read key number")
           }
           val invalidKeys = keyNumbers.filter(_ < 0)
           if (invalidKeys.length < 0) {
@@ -147,7 +165,15 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
           readArguments(tail, options.copy(complexSort = true))
         }
         case Nil => Right(options)
-        case _   => Left(s"Unknown options ${arguments}")
+        case (extraFileLoc: String) :: tail => {
+          val extaFile = new File(extraFileLoc)
+          if (!extaFile.exists) {
+            Left(s"Unknown file or parameter $extraFileLoc")
+          } else {
+            val files = addExtraFile(extaFile, options.files)
+            readArguments(tail, options.copy(files = files))
+          }
+        }
       }
     }
 

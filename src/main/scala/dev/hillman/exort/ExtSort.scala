@@ -2,10 +2,10 @@ package dev.hillman.exort
 
 import java.io.{BufferedReader, File, FileReader, PrintWriter}
 import java.nio.file.{Files, Path, Paths, StandardCopyOption}
-
 import com.univocity.parsers.tsv.{TsvWriter, TsvWriterSettings}
 import dev.hillman.exort
 
+import scala.Console.println
 import scala.collection.SeqView.Reverse
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -19,12 +19,12 @@ object ExtSort {
       case '\t' => Tools.tsvParser(settings.skipHeader)
       case _    => Tools.csvParser(settings.sep, settings.skipHeader)
     }
-    parser.beginParsing(settings.file)
+
+    var iterFile = 0
 
     def sortAsLongFile(keyCol: Int, reverse: Boolean): List[TempSortedFile] = {
       var iterRow = 1
       var originalRowNr = 1
-      var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
       var currentDataSet: List[LongRow] = Nil
@@ -93,7 +93,6 @@ object ExtSort {
                          reverse: Boolean): List[TempSortedFile] = {
       var iterRow = 1
       var originalRowNr = 1
-      var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
       var currentDataSet: List[StringRow] = Nil
@@ -158,7 +157,6 @@ object ExtSort {
                          reverse: Boolean): List[TempSortedFile] = {
       var iterRow = 1
       var originalRowNr = 1
-      var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
       var currentDataSet: List[DoubleRow] = Nil
@@ -227,7 +225,6 @@ object ExtSort {
     def sortAsVaryRowFile(): List[TempSortedFile] = {
       var iterRow = 1
       var originalRowNr = 1
-      var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
       var currentDataSet: List[VaryRow] = Nil
@@ -275,7 +272,6 @@ object ExtSort {
     def sortAsComplexVaryRow(): List[TempSortedFile] = {
       var iterRow = 1
       var originalRowNr = 1
-      var iterFile = 0
       var sortedFiles: List[TempSortedFile] = Nil
       var currentRow: Array[String] = parser.parseNext()
       var currentDataSet: List[VaryRowComplex] = Nil
@@ -319,29 +315,35 @@ object ExtSort {
       sortedFiles
     }
 
-    val sortedFiles = if (settings.complexSort) {
-      sortAsComplexVaryRow()
-    } else if (settings.keyType.length > 1) {
-      sortAsVaryRowFile()
-    } else {
-      settings.keyType(0) match {
-        case Tools.sortKeyType.integerKeyType =>
-          sortAsLongFile(settings.keyNr(0), false)
-        case Tools.sortKeyType.stringKeyType =>
-          sortAsStringFile(settings.keyNr(0), false)
-        case Tools.sortKeyType.decimalKeyType =>
-          sortAsDoubleFile(settings.keyNr(0), false)
-        case Tools.sortKeyType.integerNegKeyType =>
-          sortAsLongFile(settings.keyNr(0), true)
-        case Tools.sortKeyType.stringNegKeyType =>
-          sortAsStringFile(settings.keyNr(0), true)
-        case Tools.sortKeyType.decimalNegKeyType =>
-          sortAsDoubleFile(settings.keyNr(0), true)
-      }
-    }
+    val sortedFiles: List[TempSortedFile] =
+      settings.files.flatMap((inputFile: File) => {
+        parser.beginParsing(inputFile)
 
-    print("\nFinished parsing & sorting parts\n")
-    sortedFiles.reverse
+        val partSortedFiles = if (settings.complexSort) {
+          sortAsComplexVaryRow()
+        } else if (settings.keyType.length > 1) {
+          sortAsVaryRowFile()
+        } else {
+          settings.keyType(0) match {
+            case Tools.sortKeyType.integerKeyType =>
+              sortAsLongFile(settings.keyNr(0), false)
+            case Tools.sortKeyType.stringKeyType =>
+              sortAsStringFile(settings.keyNr(0), false)
+            case Tools.sortKeyType.decimalKeyType =>
+              sortAsDoubleFile(settings.keyNr(0), false)
+            case Tools.sortKeyType.integerNegKeyType =>
+              sortAsLongFile(settings.keyNr(0), true)
+            case Tools.sortKeyType.stringNegKeyType =>
+              sortAsStringFile(settings.keyNr(0), true)
+            case Tools.sortKeyType.decimalNegKeyType =>
+              sortAsDoubleFile(settings.keyNr(0), true)
+          }
+        }
+        partSortedFiles.reverse
+      })
+
+    println("\nFinished parsing & sorting parts\n")
+    sortedFiles
   }
 
   /**

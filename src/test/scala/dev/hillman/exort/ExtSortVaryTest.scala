@@ -34,7 +34,7 @@ class ExtSortVaryTest extends AnyFlatSpec {
   val testFileVary = new File(testDirectory.toString + "/testfileVary.csv")
 
   val allAtOnceSetting = ExortSetting(
-    testFileVary,
+    List(testFileVary),
     keyType = Array(sortKeyType.stringKeyType, sortKeyType.integerNegKeyType),
     keyNr = Array(1, 0),
     outFileName = "testfileVary_sorted.csv")

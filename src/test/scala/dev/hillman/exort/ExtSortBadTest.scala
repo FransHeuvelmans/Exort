@@ -10,7 +10,7 @@ class ExtSortBadTest extends AnyFlatSpec {
   "A file with weird lines" should "be parsable" in {
     val testDirectory = Paths.get("src/test/resources").toAbsolutePath
     val testFile = new File(testDirectory.toString + "/testBadFile.csv")
-    val settings = ExortSetting(testFile,
+    val settings = ExortSetting(List(testFile),
                                 keyType = Array(sortKeyType.integerKeyType),
                                 keyNr = Array(4),
                                 outFileName = "testfileBad_sorted.tsv")
@@ -22,7 +22,7 @@ class ExtSortBadTest extends AnyFlatSpec {
     val testDirectory = Paths.get("src/test/resources").toAbsolutePath
     val testFile = new File(testDirectory.toString + "/testBadFile.csv")
     val settings = ExortSetting(
-      testFile,
+      List(testFile),
       keyType = Array(sortKeyType.integerKeyType, sortKeyType.stringKeyType),
       keyNr = Array(4, 3),
       outFileName = "testfileBad_sorted.tsv")

@@ -2,7 +2,7 @@ name := "Exort"
 version := "0.2.1"
 organization := "dev.hillman"
 
-scalaVersion := "2.13.1"
+scalaVersion := "2.13.4"
 scalacOptions ++= Seq("-deprecation", "-feature")
 
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.0"

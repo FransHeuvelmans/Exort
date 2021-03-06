@@ -23,7 +23,7 @@ class ExtSortIntTest extends AnyFlatSpec with BeforeAndAfter {
 
   val testDirectory = Paths.get("src/test/resources").toAbsolutePath
   val testFileA = new File(testDirectory.toString + "/testfileA.csv")
-  val settings = ExortSetting(testFileA,
+  val settings = ExortSetting(List(testFileA),
                               rowSplit = 6,
                               keyType = Array(sortKeyType.integerKeyType),
                               keyNr = Array(1),
@@ -37,6 +37,10 @@ class ExtSortIntTest extends AnyFlatSpec with BeforeAndAfter {
   }
   after {
     outFiles.foreach(_.file.delete())
+    val mergefiles = new File(testDirectory.toString + "/p1000.tsv") :: new File(
+      testDirectory.toString + "/p1001.tsv") :: Nil
+    mergefiles.foreach(f => if (f.exists()) { f.delete() })
+
   }
 
   "A non-sorted input csv" should "be sortable in parts" in {
@@ -62,7 +66,7 @@ class ExtSortIntTest extends AnyFlatSpec with BeforeAndAfter {
     f.delete()
   }
 
-  val reverseSettings = ExortSetting(testFileA,
+  val reverseSettings = ExortSetting(List(testFileA),
                                      rowSplit = 6,
                                      keyType =
                                        Array(sortKeyType.integerNegKeyType),
@@ -80,6 +84,44 @@ class ExtSortIntTest extends AnyFlatSpec with BeforeAndAfter {
     assert(outFilesReverse.tail.head.vlow === 78)
     assert(outFilesReverse.tail.head.vhigh === 110)
     outFilesReverse.foreach(_.file.delete())
+  }
+
+  val testFileAA = new File(testDirectory.toString + "/testfileAA.csv")
+  val p2Vals = -9 :: -8 :: -7 :: -5 :: -2 :: -1 :: Nil
+  val p3Vals = 205 :: 333 :: 520 :: 780 :: 907 :: 1001 :: Nil
+  val multiFileSettings = ExortSetting(List(testFileA, testFileAA),
+                                       rowSplit = 6,
+                                       keyType =
+                                         Array(sortKeyType.integerKeyType),
+                                       keyNr = Array(1),
+                                       outFileName = "testfileAA_sorted.tsv")
+  "multiple not-sorted files" should "be sorted in parts in order first" in {
+    val longFiles = ExtSort
+      .sortParts(testDirectory, multiFileSettings)
+      .map(_.asInstanceOf[LongSortedFile])
+    testFile(longFiles(0).file, p0Vals, multiFileSettings.keyNr.head)
+    testFile(longFiles(1).file, p1Vals, multiFileSettings.keyNr.head)
+    testFile(longFiles(2).file, p2Vals, multiFileSettings.keyNr.head)
+    testFile(longFiles(3).file, p3Vals, multiFileSettings.keyNr.head)
+    assert(longFiles(0).vlow === p0Vals.head)
+    assert(longFiles(0).vhigh === p0Vals.last)
+    assert(longFiles(1).vlow === p1Vals.head)
+    assert(longFiles(1).vhigh === p1Vals.last)
+    assert(longFiles(2).vlow === p2Vals.head)
+    assert(longFiles(2).vhigh === p2Vals.last)
+    assert(longFiles(3).vlow === p3Vals.head)
+    assert(longFiles(3).vhigh === p3Vals.last)
+
+    val combined =
+      ExtSort.externalMergeSort(longFiles.map(_.file),
+                                testDirectory,
+                                multiFileSettings)
+    testFile(combined,
+             p2Vals ++ p0Vals ++ p1Vals ++ p3Vals,
+             multiFileSettings.keyNr.head)
+    combined.delete()
+    longFiles(2).file.delete()
+    longFiles(3).file.delete()
   }
 
 }
