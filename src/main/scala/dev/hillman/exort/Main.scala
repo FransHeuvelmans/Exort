@@ -6,15 +6,17 @@ import dev.hillman.exort.Tools.sortKeyType._
 
 import scala.annotation.tailrec
 
-case class ExortSetting(files: List[File],
-                        rowSplit: Int = 20000,
-                        sep: Char = ';',
-                        keyType: Array[sortKeyType] = Array(stringKeyType),
-                        keyNr: Array[Int] = Array(0),
-                        complexSort: Boolean = false,
-                        unixPrepare: Boolean = false,
-                        skipHeader: Boolean = false,
-                        outFileName: String)
+case class ExortSetting(
+    files: List[File],
+    rowSplit: Int = 20000,
+    sep: Char = ';',
+    keyType: Array[sortKeyType] = Array(stringKeyType),
+    keyNr: Array[Int] = Array(0),
+    complexSort: Boolean = false,
+    unixPrepare: Boolean = false,
+    skipHeader: Boolean = false,
+    outFileName: String
+)
 
 object Main {
 
@@ -83,12 +85,13 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
       return Left(s"File must already exist, tried file ${file.getName}")
     }
     val defaultOption =
-      ExortSetting(List(file),
-                   outFileName = Tools.endOutputFileName(file.getName))
+      ExortSetting(List(file), outFileName = Tools.endOutputFileName(file.getName))
 
     @tailrec
-    def readArguments(arguments: List[String],
-                      options: ExortSetting): Either[String, ExortSetting] = {
+    def readArguments(
+        arguments: List[String],
+        options: ExortSetting
+    ): Either[String, ExortSetting] = {
       arguments match {
         case "--rows" :: rws :: tail => {
           val rows = {
@@ -125,12 +128,13 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
           readArguments(tail, options.copy(sep = sepr(0)))
         }
         case "--key" :: kn :: tail => {
-          val keyNumbers = try {
-            kn.split(",").map((v: String) => v.toInt)
-          } catch {
-            case x: Throwable =>
-              val y = x; return Left("Could not read key number")
-          }
+          val keyNumbers =
+            try {
+              kn.split(",").map((v: String) => v.toInt)
+            } catch {
+              case x: Throwable =>
+                val y = x; return Left("Could not read key number")
+            }
           val invalidKeys = keyNumbers.filter(_ < 0)
           if (invalidKeys.length < 0) {
             Left("Key value must be positive")
@@ -145,9 +149,11 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
               case "d"  => Option(decimalKeyType)
               case "i"  => Option(integerKeyType)
               case "s"  => Option(stringKeyType)
+              case "l"  => Option(stringLowerCaseKeyType)
               case "-d" => Option(decimalNegKeyType)
               case "-i" => Option(integerNegKeyType)
               case "-s" => Option(stringNegKeyType)
+              case "-l" => Option(stringLowerCaseNegKeyType)
               case _    => Option.empty
             }
           if (ktypes.contains(Option.empty)) {
@@ -182,12 +188,10 @@ java -jar Exort.jar --rows 80000 --sep , myfile.csv"""
       */
     def fixSettings(settings: ExortSetting): ExortSetting = {
       if (settings.keyNr.length < settings.keyType.length) {
-        settings.copy(
-          keyType = settings.keyType.slice(0, settings.keyNr.length))
+        settings.copy(keyType = settings.keyType.slice(0, settings.keyNr.length))
       } else if (settings.keyType.length > settings.keyType.length) {
         val diff = settings.keyType.length - settings.keyType.length
-        settings.copy(
-          keyType = settings.keyType ++ List.fill(diff)(stringKeyType))
+        settings.copy(keyType = settings.keyType ++ List.fill(diff)(stringKeyType))
       } else {
         settings
       }

@@ -14,9 +14,7 @@ class ExtSortVaryTest extends AnyFlatSpec {
     * @param answers the answers as they should be in the file
     * @param keyLoc location of the 2 answers in the tsv file
     */
-  def testFile(fileToCheck: File,
-               answers: List[(Int, String)],
-               keyLoc: (Int, Int)): Unit = {
+  def testFile(fileToCheck: File, answers: List[(Int, String)], keyLoc: (Int, Int)): Unit = {
     val parser = Tools.tsvParser(false)
     parser.beginParsing(fileToCheck)
     var ansNr = 0
@@ -32,12 +30,14 @@ class ExtSortVaryTest extends AnyFlatSpec {
 
   val testDirectory = Paths.get("src/test/resources").toAbsolutePath
   val testFileVary = new File(testDirectory.toString + "/testfileVary.csv")
+  val testFileB2 = new File(testDirectory.toString + "/testFileB2.csv")
 
   val allAtOnceSetting = ExortSetting(
     List(testFileVary),
     keyType = Array(sortKeyType.stringKeyType, sortKeyType.integerNegKeyType),
     keyNr = Array(1, 0),
-    outFileName = "testfileVary_sorted.csv")
+    outFileName = "testfileVary_sorted.csv"
+  )
   val fullResult = List(
     (10, "a"),
     (9, "a"),
@@ -100,12 +100,105 @@ class ExtSortVaryTest extends AnyFlatSpec {
 
   it should "be mergable with sorting" in {
     val outFiles = ExtSort.sortParts(testDirectory, splitInTwoSetting)
-    val processedFile = ExtSort.externalMergeSort(outFiles.map(_.file),
-                                                  testDirectory,
-                                                  splitInTwoSetting)
+    val processedFile =
+      ExtSort.externalMergeSort(outFiles.map(_.file), testDirectory, splitInTwoSetting)
     testFile(processedFile, fullResult, (0, 1))
     processedFile.delete()
     outFiles.foreach(_.file.delete())
+  }
+
+  "A file with a string plus int combination" should "sort case sensitive properly" in {
+    val settingsNormal = ExortSetting(
+      List(testFileB2),
+      rowSplit = 4,
+      keyType = Array(sortKeyType.stringNegKeyType, sortKeyType.integerKeyType),
+      sep = ' ',
+      keyNr = Array(1, 0),
+      outFileName = "testfileB2_sorted.tsv"
+    )
+    val outFiles = ExtSort.sortParts(testDirectory, settingsNormal)
+
+    val p0Vals = List(
+      (200, "z"),
+      (504, "g"),
+      (896, "a"),
+      (100, "Hz")
+    )
+    val p1Vals = List(
+      (100, "ha"),
+      (102, "g"),
+      (101, "Z"),
+      (286, "A")
+    )
+
+    testFile(outFiles(0).file, p0Vals, (0, 1))
+    testFile(outFiles(1).file, p1Vals, (0, 1))
+
+    val mergeList = ExtSort.mergeAccidentalSorted(outFiles, testDirectory)
+    assert(mergeList.length === outFiles.length) // Nothing to be merged here
+
+    val f = ExtSort.externalMergeSort(mergeList, testDirectory, settingsNormal)
+
+    val pFinalVals = List(
+      (200, "z"),
+      (100, "ha"),
+      (102, "g"),
+      (504, "g"),
+      (896, "a"),
+      (101, "Z"),
+      (100, "Hz"),
+      (286, "A")
+    )
+    testFile(f, pFinalVals, (0, 1))
+    mergeList.foreach(_.delete())
+    f.delete()
+  }
+
+  it should "sort case insensitive properly" in {
+    val settingsNormal = ExortSetting(
+      List(testFileB2),
+      rowSplit = 4,
+      keyType = Array(sortKeyType.stringLowerCaseNegKeyType, sortKeyType.integerKeyType),
+      sep = ' ',
+      keyNr = Array(1, 0),
+      outFileName = "testfileB2_sorted.tsv"
+    )
+    val outFiles = ExtSort.sortParts(testDirectory, settingsNormal)
+
+    val p0Vals = List(
+      (200, "z"),
+      (100, "Hz"),
+      (504, "g"),
+      (896, "a")
+    )
+    val p1Vals = List(
+      (101, "Z"),
+      (100, "ha"),
+      (102, "g"),
+      (286, "A")
+    )
+
+    testFile(outFiles(0).file, p0Vals, (0, 1))
+    testFile(outFiles(1).file, p1Vals, (0, 1))
+
+    val mergeList = ExtSort.mergeAccidentalSorted(outFiles, testDirectory)
+    assert(mergeList.length === outFiles.length) // Nothing to be merged here
+
+    val f = ExtSort.externalMergeSort(mergeList, testDirectory, settingsNormal)
+
+    val pFinalVals = List(
+      (101, "Z"),
+      (200, "z"),
+      (100, "Hz"),
+      (100, "ha"),
+      (102, "g"),
+      (504, "g"),
+      (286, "A"),
+      (896, "a")
+    )
+    testFile(f, pFinalVals, (0, 1))
+    mergeList.foreach(_.delete())
+    f.delete()
   }
 
 }

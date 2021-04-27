@@ -14,16 +14,16 @@ import scala.util.Random
 object Tools {
   object sortKeyType extends Enumeration {
     type sortKeyType = Value
-    val decimalKeyType, decimalNegKeyType, integerKeyType, integerNegKeyType,
-    stringKeyType, stringNegKeyType = Value
+    val decimalKeyType, decimalNegKeyType, integerKeyType, integerNegKeyType, stringKeyType,
+        stringNegKeyType, stringLowerCaseKeyType, stringLowerCaseNegKeyType = Value
   }
 
   /**
-   * Create a new csv parser
-   * @param sep the separator character
-   * @param hasHeader Is there a header which should be skipped
-   * @return new parser object
-   */
+    * Create a new csv parser
+    * @param sep the separator character
+    * @param hasHeader Is there a header which should be skipped
+    * @return new parser object
+    */
   def csvParser(sep: Char, hasHeader: Boolean): CsvParser = {
     val settings = new CsvParserSettings()
     val fmt = settings.getFormat()
@@ -35,10 +35,10 @@ object Tools {
   }
 
   /**
-   * Create a new Tsv-parser
-   * @param hasHeader Is there a header which should be skipped
-   * @return new parser object
-   */
+    * Create a new Tsv-parser
+    * @param hasHeader Is there a header which should be skipped
+    * @return new parser object
+    */
   def tsvParser(hasHeader: Boolean): TsvParser = {
     val settings = new TsvParserSettings()
     settings.getFormat.setLineSeparator("\n")
@@ -48,9 +48,9 @@ object Tools {
   }
 
   /**
-   * Create a directory in temp for storing the data  for intermediate steps
-   * @return Path to the temporary directory
-   */
+    * Create a directory in temp for storing the data  for intermediate steps
+    * @return Path to the temporary directory
+    */
   def createTempDir(): Path = {
     val tempPrefix = "exsort_" + Random.alphanumeric
       .take(10)
@@ -59,11 +59,11 @@ object Tools {
   }
 
   /**
-   * Create a new (temp) File with name based on a number
-   * @param location Path to the new file's location
-   * @param nr number used for the name of the file
-   * @return new File object
-   */
+    * Create a new (temp) File with name based on a number
+    * @param location Path to the new file's location
+    * @param nr number used for the name of the file
+    * @return new File object
+    */
   def tempOutputFile(location: Path, nr: Int = 0): File =
     new File(location.toFile, s"p${nr}.tsv")
 
@@ -74,11 +74,9 @@ object Tools {
   }
 
   /**
-   * Write a list of rows to a tsv-file
-   */
-  def writeToFile(data: Iterable[SortableRow],
-                  fileLoc: File,
-                  settings: ExortSetting): Unit = {
+    * Write a list of rows to a tsv-file
+    */
+  def writeToFile(data: Iterable[SortableRow], fileLoc: File, settings: ExortSetting): Unit = {
     val writer = new TsvWriter(fileLoc, new TsvWriterSettings)
     val outArray: Iterable[Array[String]] =
       data.map((x: SortableRow) => x.getContent)
@@ -90,9 +88,7 @@ object Tools {
     * Alphabetical distance (NO edit distance)
     */
   @scala.annotation.tailrec
-  private def StringDistance(a: String,
-                     b: String,
-                     prevDistances: List[Int]): List[Int] = {
+  private def StringDistancePerChar(a: String, b: String, prevDistances: List[Int]): List[Int] = {
     if ((a.isEmpty) && (b.isEmpty)) {
       return prevDistances.reverse
     } else if (a.isEmpty) {
@@ -101,19 +97,19 @@ object Tools {
       return (a.head.toInt :: prevDistances).reverse
     }
     val diff = a.head - b.head
-    StringDistance(a.tail, b.tail, diff :: prevDistances)
+    StringDistancePerChar(a.tail, b.tail, diff :: prevDistances)
   }
 
   /**
-   * Alphabetical distance with case equality
-   */
-  def StringDistanceLowerCase(a: String, b: String): List[Int] =
-    StringDistance(a.toLowerCase, b.toLowerCase, Nil)
+    * Alphabetical distance with case equality
+    */
+  def StringDistance(a: String, b: String): List[Int] =
+    StringDistancePerChar(a, b, Nil)
 
   /**
-   * Delete all files at a location
-   * @param location the path to this location
-   */
+    * Delete all files at a location
+    * @param location the path to this location
+    */
   def cleanDirectory(location: Path): Unit = {
     // Clean the directory and all files within here
     println(s"Deleting files at $location")
@@ -122,22 +118,26 @@ object Tools {
   }
 
   /**
-   * Create a new VaryRow based based on a string-array and the settings
-   * @param inSource raw separated column data
-   * @param setting settings for interpreting the file
-   * @param addSource Store the original string array in the object
-   * @return a new VaryRow object
-   */
-  def convertToVaryRow(inSource: Array[String],
-                       setting: ExortSetting,
-                       addSource: Boolean = true): Either[String, VaryRow] = {
+    * Create a new VaryRow based based on a string-array and the settings
+    * @param inSource raw separated column data
+    * @param setting settings for interpreting the file
+    * @param addSource Store the original string array in the object
+    * @return a new VaryRow object
+    */
+  def convertToVaryRow(
+      inSource: Array[String],
+      setting: ExortSetting,
+      addSource: Boolean = true
+  ): Either[String, VaryRow] = {
 
     val inSourceSafe = inSource.lift
-    def getSafe(idx: Int): Option[String] = inSourceSafe(idx).flatMap(s => s match {
-        case null => Option.empty
-        case anS: String => Option(anS)
-      })
-
+    def getSafe(idx: Int): Option[String] =
+      inSourceSafe(idx).flatMap(s =>
+        s match {
+          case null        => Option.empty
+          case anS: String => Option(anS)
+        }
+      )
 
     @scala.annotation.tailrec
     def createRow(idx: Int, outRow: VaryRow): Either[String, VaryRow] = {
@@ -150,8 +150,7 @@ object Tools {
           if (longVal.isEmpty) {
             return Left(s"Could not read longval at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v3 = outRow.v3 :+ longVal.get)
+          val newRow = outRow.copy(v3 = outRow.v3 :+ longVal.get)
           createRow(idx + 1, newRow)
         }
         case sortKeyType.integerNegKeyType => {
@@ -159,8 +158,7 @@ object Tools {
           if (longVal.isEmpty) {
             return Left(s"Could not read longval at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v3 = outRow.v3 :+ longVal.get)
+          val newRow = outRow.copy(v3 = outRow.v3 :+ longVal.get)
           createRow(idx + 1, newRow)
         }
         case sortKeyType.decimalKeyType => {
@@ -168,8 +166,7 @@ object Tools {
           if (doubleVal.isEmpty) {
             return Left(s"Could not read doubleval at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v2 = outRow.v2 :+ doubleVal.get)
+          val newRow = outRow.copy(v2 = outRow.v2 :+ doubleVal.get)
           createRow(idx + 1, newRow)
         }
         case sortKeyType.decimalNegKeyType => {
@@ -177,11 +174,10 @@ object Tools {
           if (doubleVal.isEmpty) {
             return Left(s"Could not read doubleval at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v2 = outRow.v2 :+ doubleVal.get)
+          val newRow = outRow.copy(v2 = outRow.v2 :+ doubleVal.get)
           createRow(idx + 1, newRow)
         }
-        case sortKeyType.stringKeyType => {
+        case sortKeyType.stringKeyType | sortKeyType.stringNegKeyType => {
           val strVal = getSafe(setting.keyNr(idx))
           if (strVal.isEmpty) {
             return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
@@ -190,8 +186,8 @@ object Tools {
             outRow.copy(v1 = outRow.v1 :+ strVal.get)
           createRow(idx + 1, newRow)
         }
-        case sortKeyType.stringNegKeyType => {
-          val strVal = getSafe(setting.keyNr(idx))
+        case sortKeyType.stringLowerCaseKeyType | sortKeyType.stringLowerCaseNegKeyType => {
+          val strVal = getSafe(setting.keyNr(idx)).map(_.toLowerCase)
           if (strVal.isEmpty) {
             return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
           }
@@ -211,15 +207,17 @@ object Tools {
   }
 
   /**
-   * Create a new VaryRowComplex based based on a string-array and the settings
-   * @param inSource raw separated column data
-   * @param setting settings for interpreting the file
-   * @param addSource Store the original string array in the object
-   * @return a new VaryRowComplex object
-   */
-  def convertToComplexVaryRow(inSource: Array[String],
-                       setting: ExortSetting,
-                       addSource: Boolean = true): Either[String, VaryRowComplex] = {
+    * Create a new VaryRowComplex based based on a string-array and the settings
+    * @param inSource raw separated column data
+    * @param setting settings for interpreting the file
+    * @param addSource Store the original string array in the object
+    * @return a new VaryRowComplex object
+    */
+  def convertToComplexVaryRow(
+      inSource: Array[String],
+      setting: ExortSetting,
+      addSource: Boolean = true
+  ): Either[String, VaryRowComplex] = {
 
     @scala.annotation.tailrec
     def createComplexRow(idx: Int, outRow: VaryRowComplex): Either[String, VaryRowComplex] = {
@@ -228,62 +226,62 @@ object Tools {
       }
       setting.keyType(idx) match {
         case sortKeyType.integerKeyType => {
-          val bintVal = try {
-            Option(BigInt(inSource(setting.keyNr(idx))))
-          } catch {
-            case np: java.lang.NullPointerException => Option.empty
-            case e: java.lang.NumberFormatException => Option.empty
-          }
+          val bintVal =
+            try {
+              Option(BigInt(inSource(setting.keyNr(idx))))
+            } catch {
+              case np: java.lang.NullPointerException => Option.empty
+              case e: java.lang.NumberFormatException => Option.empty
+            }
           if (bintVal.isEmpty) {
             return Left(s"Could not read bigint at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v3 = outRow.v3 :+ bintVal.get)
+          val newRow = outRow.copy(v3 = outRow.v3 :+ bintVal.get)
           createComplexRow(idx + 1, newRow)
         }
         case sortKeyType.integerNegKeyType => {
-          val bintVal = try {
-            Option(BigInt(inSource(setting.keyNr(idx))))
-          } catch {
-            case np: java.lang.NullPointerException => Option.empty
-            case e: java.lang.NumberFormatException => Option.empty
-          }
+          val bintVal =
+            try {
+              Option(BigInt(inSource(setting.keyNr(idx))))
+            } catch {
+              case np: java.lang.NullPointerException => Option.empty
+              case e: java.lang.NumberFormatException => Option.empty
+            }
           if (bintVal.isEmpty) {
             return Left(s"Could not read bigint at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v3 = outRow.v3 :+ bintVal.get)
+          val newRow = outRow.copy(v3 = outRow.v3 :+ bintVal.get)
           createComplexRow(idx + 1, newRow)
         }
         case sortKeyType.decimalKeyType => {
-          val bdecVal = try {
-            Option(BigDecimal(inSource(setting.keyNr(idx))))
-          } catch {
-            case np: java.lang.NullPointerException => Option.empty
-            case e: java.lang.NumberFormatException => Option.empty
-          }
+          val bdecVal =
+            try {
+              Option(BigDecimal(inSource(setting.keyNr(idx))))
+            } catch {
+              case np: java.lang.NullPointerException => Option.empty
+              case e: java.lang.NumberFormatException => Option.empty
+            }
           if (bdecVal.isEmpty) {
             return Left(s"Could not read bigdecimal at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v2 = outRow.v2 :+ bdecVal.get)
+          val newRow = outRow.copy(v2 = outRow.v2 :+ bdecVal.get)
           createComplexRow(idx + 1, newRow)
         }
         case sortKeyType.decimalNegKeyType => {
-          val bdecVal = try {
-            Option(BigDecimal(inSource(setting.keyNr(idx))))
-          } catch {
-            case np: java.lang.NullPointerException => Option.empty
-            case e: java.lang.NumberFormatException => Option.empty
-          }
+          val bdecVal =
+            try {
+              Option(BigDecimal(inSource(setting.keyNr(idx))))
+            } catch {
+              case np: java.lang.NullPointerException => Option.empty
+              case e: java.lang.NumberFormatException => Option.empty
+            }
           if (bdecVal.isEmpty) {
             return Left(s"Could not read bigdecimal at col ${setting.keyNr(idx)}")
           }
-          val newRow = outRow.copy(
-            v2 = outRow.v2 :+ bdecVal.get)
+          val newRow = outRow.copy(v2 = outRow.v2 :+ bdecVal.get)
           createComplexRow(idx + 1, newRow)
         }
-        case sortKeyType.stringKeyType => {
+        case sortKeyType.stringKeyType | sortKeyType.stringNegKeyType => {
           val strVal = inSource.lift(setting.keyNr(idx))
           if (strVal.isEmpty || (strVal.get == null)) {
             return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
@@ -292,12 +290,9 @@ object Tools {
             outRow.copy(v1 = outRow.v1 :+ strVal.get)
           createComplexRow(idx + 1, newRow)
         }
-        case sortKeyType.stringNegKeyType => {
-          val strVal = inSource.lift(setting.keyNr(idx))
+        case sortKeyType.stringLowerCaseKeyType | sortKeyType.stringLowerCaseNegKeyType => {
+          val strVal = inSource.lift(setting.keyNr(idx)).map(_.toLowerCase)
           if (strVal.isEmpty || (strVal.get == null)) {
-            return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
-          }
-          if (strVal.isEmpty) {
             return Left(s"Could not read stringval at col ${setting.keyNr(idx)}")
           }
           val newRow =

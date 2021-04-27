@@ -3,8 +3,6 @@ package dev.hillman.exort
 import scala.reflect._
 import scala.util.Sorting
 
-
-
 sealed trait SortableRow {
   def getContent: Array[String]
 }
@@ -17,20 +15,22 @@ case class DoubleRow(v: Double, content: Array[String]) extends SortableRow {
 case class StringRow(v: String, content: Array[String]) extends SortableRow {
   def getContent: Array[String] = this.content
 }
-case class VaryRow(v1: List[String],
-                   v2: List[Double],
-                   v3: List[Long],
-                   vs: Array[Tools.sortKeyType.sortKeyType],
-                   content: Array[String])
-    extends SortableRow {
+case class VaryRow(
+    v1: List[String],
+    v2: List[Double],
+    v3: List[Long],
+    vs: Array[Tools.sortKeyType.sortKeyType],
+    content: Array[String]
+) extends SortableRow {
   def getContent: Array[String] = this.content
 }
-case class VaryRowComplex(v1: List[String],
-                          v2: List[BigDecimal],
-                          v3: List[BigInt],
-                          vs: Array[Tools.sortKeyType.sortKeyType],
-                          content: Array[String])
-    extends SortableRow {
+case class VaryRowComplex(
+    v1: List[String],
+    v2: List[BigDecimal],
+    v3: List[BigInt],
+    vs: Array[Tools.sortKeyType.sortKeyType],
+    content: Array[String]
+) extends SortableRow {
   def getContent: Array[String] = this.content
 }
 
@@ -47,6 +47,9 @@ object StringRowOrdering extends Ordering[StringRow] {
     Ordering.String.compare(x.v, y.v)
 }
 
+/**
+  * In memory sorting of lists of rows. Does a stable sort where possible.
+  */
 object InSort {
 
   implicit val longRowOrdering = LongRowOrdering
@@ -54,8 +57,7 @@ object InSort {
   implicit val stringRowOrdering = StringRowOrdering
   implicit val varyRowOrdering = VaryRowOrdering
 
-  def sortLongRow(dataset: List[LongRow],
-                  reverse: Boolean = false): Array[LongRow] = {
+  def sortLongRow(dataset: List[LongRow], reverse: Boolean = false): Array[LongRow] = {
     val ctag = classTag[LongRow]
     if (reverse) {
       Sorting.stableSort(dataset)(ctag, LongRowOrdering.reverse)
@@ -64,8 +66,7 @@ object InSort {
     }
   }
 
-  def sortDoubleRow(dataset: List[DoubleRow],
-                    reverse: Boolean = false): Array[DoubleRow] = {
+  def sortDoubleRow(dataset: List[DoubleRow], reverse: Boolean = false): Array[DoubleRow] = {
     val ctag = classTag[DoubleRow]
     if (reverse) {
       Sorting.stableSort(dataset)(ctag, DoubleRowOrdering.reverse)
@@ -74,8 +75,7 @@ object InSort {
     }
   }
 
-  def sortStringRow(dataset: List[StringRow],
-                    reverse: Boolean = false): Array[StringRow] = {
+  def sortStringRow(dataset: List[StringRow], reverse: Boolean = false): Array[StringRow] = {
     val ctag = classTag[StringRow]
     if (reverse) {
       Sorting.stableSort(dataset)(ctag, StringRowOrdering.reverse)
@@ -84,8 +84,7 @@ object InSort {
     }
   }
 
-  def sortVaryRow(dataset: List[VaryRow],
-                  reverse: Boolean = false): Array[VaryRow] = {
+  def sortVaryRow(dataset: List[VaryRow], reverse: Boolean = false): Array[VaryRow] = {
     val ctag = classTag[VaryRow]
     if (reverse) {
       // This reverse only works when reversing the whole ordering (not usable for individual columns)
@@ -95,8 +94,10 @@ object InSort {
     }
   }
 
-  def sortVaryRowComplex(dataset: List[VaryRowComplex],
-                         reverse: Boolean = false): Array[VaryRowComplex] = {
+  def sortVaryRowComplex(
+      dataset: List[VaryRowComplex],
+      reverse: Boolean = false
+  ): Array[VaryRowComplex] = {
     val ctag = classTag[VaryRowComplex]
     if (reverse) {
       // This reverse only works when reversing the whole ordering (not usable for individual columns)

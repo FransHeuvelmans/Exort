@@ -10,11 +10,9 @@ sealed trait TempSortedFile {
   def file: File
 }
 
-case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
-    extends TempSortedFile {
+case class LongSortedFile(vlow: Long, vhigh: Long, file: File) extends TempSortedFile {
   require(vlow <= vhigh)
-  def distance(other: TempSortedFile,
-                        reverse: Boolean = false): Long = {
+  def distance(other: TempSortedFile, reverse: Boolean = false): Long = {
     val dis = other match {
       case o: LongSortedFile => {
         if (this.vlow > o.vhigh) { // case 2 & 3
@@ -35,11 +33,9 @@ case class LongSortedFile(vlow: Long, vhigh: Long, file: File)
   }
 }
 
-case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
-    extends TempSortedFile {
+case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File) extends TempSortedFile {
   require(vlow <= vhigh)
-  def distance(other: TempSortedFile,
-                        reverse: Boolean = false): Double = {
+  def distance(other: TempSortedFile, reverse: Boolean = false): Double = {
     val dis = other match {
       case o: LongSortedFile => {
         if (this.vlow > o.vhigh) {
@@ -60,17 +56,15 @@ case class DoubleSortedFile(vlow: Double, vhigh: Double, file: File)
   }
 }
 
-case class StringSortedFile(vlow: String, vhigh: String, file: File)
-    extends TempSortedFile {
+case class StringSortedFile(vlow: String, vhigh: String, file: File) extends TempSortedFile {
   require(vlow <= vhigh)
-  def distance(other: TempSortedFile,
-                        reverse: Boolean = false): List[Int] = {
+  def distance(other: TempSortedFile, reverse: Boolean = false): List[Int] = {
     val dis = other match {
       case o: StringSortedFile => {
         if (this.vlow > o.vhigh) {
-          Tools.StringDistanceLowerCase(this.vlow, o.vhigh)
+          Tools.StringDistance(this.vlow, o.vhigh)
         } else if (this.vhigh < o.vlow) {
-          Tools.StringDistanceLowerCase(this.vhigh, o.vlow)
+          Tools.StringDistance(this.vhigh, o.vlow)
         } else {
           0 :: Nil
         }
@@ -90,11 +84,9 @@ case class StringSortedFile(vlow: String, vhigh: String, file: File)
 /* Note because VaryRow only has one ordering (with many possible suborderings)
  * only the start and end of a ordered file are tracked (not whether they are
  * big or small) */
-case class VarySortedFile(vstart: VaryRow, vend: VaryRow, file: File)
-    extends TempSortedFile {
+case class VarySortedFile(vstart: VaryRow, vend: VaryRow, file: File) extends TempSortedFile {
 
-  def distance(other: TempSortedFile,
-                        reverse: Boolean = false): List[Double] = {
+  def distance(other: TempSortedFile, reverse: Boolean = false): List[Double] = {
     require(!reverse) // Should use special ordering types for varyrows
     other match {
       case o: VarySortedFile => {
@@ -112,9 +104,8 @@ case class VarySortedFile(vstart: VaryRow, vend: VaryRow, file: File)
 }
 
 case class ComplexVarySortedFile(vstart: VaryRowComplex, vend: VaryRowComplex, file: File)
-  extends TempSortedFile {
-  def distance(other: TempSortedFile,
-               reverse: Boolean = false): List[BigDecimal] = {
+    extends TempSortedFile {
+  def distance(other: TempSortedFile, reverse: Boolean = false): List[BigDecimal] = {
     require(!reverse) // Should use special ordering types for varyrows
     other match {
       case o: ComplexVarySortedFile => {
@@ -143,7 +134,8 @@ object FileSort {
         return false
       } else if (num.lt(c, num.zero)) {
         return true
-    })
+      }
+    )
     false
   }
 
@@ -157,7 +149,8 @@ object FileSort {
         return false
       } else if (num.gt(c, num.zero)) {
         return true
-    })
+      }
+    )
     false
   }
 

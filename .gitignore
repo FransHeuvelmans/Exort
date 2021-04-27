@@ -1,5 +1,6 @@
 *.csv
 *.tsv
+!src/test/resources/*.csv
 
 # Created by https://www.gitignore.io/api/sbt,scala,python,intellij+all
 # Edit at https://www.gitignore.io/?templates=sbt,scala,python,intellij+all
